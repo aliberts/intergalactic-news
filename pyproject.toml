@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "intergalactic-news"
+version = "0.1.0"
+description = "Get the latest news from intergalactic space."
+authors = ["Simon Alibert <alibert.sim@gmail.com>"]
+repository = "https://github.com/aliberts/intergalactic-news"
+readme = "README.md"
+packages = [{include = "inews"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyrallis = "^0.3.1"
+python-dotenv = "^1.0.0"
+google-api-python-client = "^2.104.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.5.0"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | tests
+)/
+'''
+
+[tool.isort]
+line_length = 100
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

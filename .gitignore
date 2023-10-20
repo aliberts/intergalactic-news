@@ -1,3 +1,10 @@
+# Apple
+.DS_Store
+._.DS_Store
+
+# Secrets
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
