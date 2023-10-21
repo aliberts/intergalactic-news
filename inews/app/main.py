@@ -1,46 +1,39 @@
-import json
-import os
-from dataclasses import asdict
-from pprint import pprint
+from youtube_transcript_api import YouTubeTranscriptApi
 
-import googleapiclient.discovery
-import googleapiclient.errors
-from dotenv import load_dotenv
+from inews.domain import preprocessing, youtube
+from inews.infra.models import YoutubeVideoList
 
-from inews.infra.channels import yt_channels
-
-load_dotenv()
-api_key = os.environ["GOOGLE_API_KEY"]
-api_service_name = "youtube"
-api_version = "v3"
+initialize = False
 
 
 def main():
-    youtube = googleapiclient.discovery.build(api_service_name, api_version, developerKey=api_key)
+    if initialize:
+        channels_obj_list = youtube.initialize_channels_state()
+    else:
+        channels_obj_list = youtube.read_channels_state()
 
-    id_list = [channel.id for channel in yt_channels.values()]
+    # TODO: check if last video is new, then get the transcript if it is
 
-    request = youtube.channels().list(part="contentDetails", id=id_list, maxResults=50)
-    response = request.execute()
-    # pprint(response)
+    videos_id = [channel.last_video_id for channel in channels_obj_list.channels]
 
-    for item in response["items"]:
-        id = item["id"]
-        yt_channels[id].uploads_playlist_id = item["contentDetails"]["relatedPlaylists"]["uploads"]
+    raw_transcripts, _ = YouTubeTranscriptApi.get_transcripts(videos_id, languages=["en"])
 
-    channels_state = {}
-    for channel in yt_channels.values():
-        channels_state[channel.id] = asdict(channel)
+    transcripts = preprocessing.format_transcripts(raw_transcripts)
 
-    with open("inews/infra/channels_state.json", "w") as fp:
-        json.dump(channels_state, fp, indent=4)
-
-    for channel in yt_channels.values():
-        request = youtube.playlistItems().list(
-            part="contentDetails", maxResults=10, playlistId=channel.uploads_playlist_id
+    video_list = []
+    for channel in channels_obj_list.channels:
+        video_id = channel.last_video_id
+        video_list.append(
+            {
+                "id": video_id,
+                "title": channel.last_video_title,
+                "date": channel.last_video_date,
+                "en_transcript": transcripts[video_id],
+            }
         )
-        response = request.execute()
-        pprint(response)
+
+    videos_obj_list = YoutubeVideoList(videos=video_list)
+    youtube.write_transcripts(videos_obj_list)
 
 
 if __name__ == "__main__":
