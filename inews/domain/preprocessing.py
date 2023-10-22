@@ -3,7 +3,8 @@ from unidecode import unidecode
 
 def format_transcript(raw_transcript):
     transcript = " ".join(line["text"] for line in raw_transcript)
-    return unidecode(transcript).replace("\n", " ")
+    transcript = unidecode(transcript).replace("\n", " ").replace("[Music]", "")
+    return " ".join(transcript.split())
 
 
 def format_transcripts(raw_transcripts: dict) -> dict:
