@@ -11,6 +11,7 @@ class YoutubeVideoTranscript(BaseModel):
     channel_name: str
     date: datetime
     is_generated: bool
+    tokens_count: int
     transcript: str
 
 

@@ -118,6 +118,7 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
                     continue
                 raw_transcript = available_transcript.fetch()
                 transcript = preprocessing.format_transcript(raw_transcript)
+                tokens_count = preprocessing.count_tokens(transcript)
                 transcripts_list.append(
                     {
                         "video_id": video.id,
@@ -126,6 +127,7 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
                         "channel_name": channel.name,
                         "date": video.date,
                         "is_generated": available_transcript.is_generated,
+                        "tokens_count": tokens_count,
                         "transcript": transcript,
                     }
                 )
