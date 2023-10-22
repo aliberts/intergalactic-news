@@ -4,7 +4,11 @@ from pathlib import Path
 import yaml
 from unidecode import unidecode
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled
+from youtube_transcript_api._errors import (
+    NoTranscriptAvailable,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+)
 
 from inews.domain import preprocessing
 from inews.infra.apis import setup_youtube_api_client
@@ -62,7 +66,7 @@ def get_recent_videos(youtube, uploads_playlist_id, number_of_videos=3) -> list:
         if "#shorts" in item["snippet"]["title"]:
             # HACK this is a workaround as there is currently no way of checking if
             # a video is a short or not with playlistItems and the hashtag "#shorts"
-            # is not mandotory in youtube #shorts titles. Might not alway work.
+            # is not mandotory in youtube #shorts titles. Might not always work.
             continue
         else:
             recent_videos_list.append(
@@ -114,7 +118,7 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
                     available_transcript = YouTubeTranscriptApi.list_transcripts(
                         video.id
                     ).find_transcript(["en"])
-                except TranscriptsDisabled:
+                except (TranscriptsDisabled, NoTranscriptAvailable, NoTranscriptFound):
                     continue
                 raw_transcript = available_transcript.fetch()
                 transcript = preprocessing.format_transcript(raw_transcript)
