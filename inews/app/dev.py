@@ -9,7 +9,9 @@ PROMPTS_DATA_PATH = Path("data/prompts/")
 PROMPT1_TEMPLATE = """The following is the transcript of a youtube video by
 youtube channel {channel_name}. This is a channel that talks
 mainly about astronomy and astrophysics and relevant news in
-these fields. The title of the video is "{video_title}".
+these fields.
+
+The title of the video is "{video_title}".
 
 Write a short summary (3-4 paragraphs) of this transcript,
 intended to be read and understood by {user_age} with
@@ -65,13 +67,59 @@ USER_SCIENCE_LEVEL_CHOICE = [
 ]
 
 
-def generate_prompts():
-    transcript_list = io.read_transcripts()
-    for idx, transcript in enumerate(transcript_list):
-        if transcript.tokens_count < 500:
-            transcript_list.pop(idx)
+SUMMARY = """
+The Gaia Space Telescope, known for its detailed mapping of
+the sky, recently released a new set of data called the
+focused product release (FPR), which contains information on
+approximately 1.8 billion stars as well as other objects in
+the solar system. One of the notable discoveries from this
+data release is the identification of half a million new
+stars in a well-known globular cluster called Omega
+Centauri. These stars were previously difficult to study due
+to their close proximity to one another, but the new data
+allows scientists to study their movements and interactions.
+Additionally, the Gaia telescope accidentally discovered
+gravitational lenses, indicating the presence of distant
+quasars. A total of 381 candidates, with 50 confirmed as new
+quasars, were found, including five rare quadruple lens
+quasars. The release also revealed approximately 10,000
+variable stars, which are useful for measuring distances to
+various objects in the universe. Furthermore, the FPR data
+included information on 150,000 asteroids, allowing for more
+precise calculations of their orbits and potential impact
+risks to Earth.\n\nIn a separate release, the SiGN Galaxy
+Atlas, compiled by scientists from the National Science
+Foundation using NOIRLab telescopes, contains 400,000
+galaxies in our cosmic neighborhood. This survey, which
+captured images in both optical and infrared light,
+represents the largest galactic survey to date and provides
+the most detailed map of the night sky. The data includes
+recalculated measurements such as red shift distance,
+improving the accuracy of previous surveys. The atlas is
+freely accessible online, allowing anyone, including amateur
+astronomers, to explore the galaxies and use the data for
+their own studies.\n\nThese releases demonstrate the
+significant advancements in astronomy and the accessibility
+of data in recent years. They provide valuable insights into
+the movements and origins of stars, the presence of quasars
+and gravitational lenses, and the formation and evolution of
+galaxies. The data will be instrumental in future studies of
+the universe and will help scientists unravel the mysteries
+of dark matter, dark energy, and the nature of the Milky
+Way. Overall, these discoveries highlight the importance of
+missions like Gaia and the collaborative efforts of
+organizations like Isa and NOIRLab in expanding our
+understanding of the universe.
+"""
 
-    for transcript in transcript_list:
+
+def generate_prompts():
+    transcript_obj_list = io.read_transcripts()
+    for idx, transcript in enumerate(transcript_obj_list.transcripts):
+        if transcript.tokens_count < 500:
+            transcript_obj_list.pop(idx)
+
+    for transcript in transcript_obj_list:
         prompt1 = PROMPT1_TEMPLATE.format(
             user_age=USER_AGE_CHOICE[2],
             user_science_level=USER_SCIENCE_LEVEL_CHOICE[2],
@@ -94,14 +142,14 @@ def generate_prompts():
 
 
 def get_transcripts_stats():
-    transcript_list = io.read_transcripts()
-    for idx, transcript in enumerate(transcript_list):
+    transcript_obj_list = io.read_transcripts()
+    for idx, transcript in enumerate(transcript_obj_list.transcripts):
         if transcript.tokens_count < 500:
-            transcript_list.pop(idx)
+            transcript_obj_list.pop(idx)
 
     prompt1_count_list = []
 
-    for transcript in transcript_list:
+    for transcript in transcript_obj_list:
         prompt1 = PROMPT1_TEMPLATE.format(
             user_age=USER_AGE_CHOICE[2],
             user_science_level=USER_SCIENCE_LEVEL_CHOICE[2],
@@ -112,9 +160,9 @@ def get_transcripts_stats():
         prompt1_count_list.append(preprocessing.count_tokens(prompt1))
 
     print(prompt1_count_list)
-    print(mean(prompt1_count_list))
+    print(f"average tokens count: {mean(prompt1_count_list):.1f}")
 
 
 if __name__ == "__main__":
-    # generate_prompts()
+    generate_prompts()
     get_transcripts_stats()

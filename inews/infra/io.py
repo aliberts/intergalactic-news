@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from typing import List
 
 import yaml
 
@@ -13,6 +12,8 @@ from inews.infra.models import (
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_STATE_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_DATA_PATH = Path("data/transcripts/")
+BASE_SUMMARIES_DATA_PATH = Path("data/base_summaries/")
+USER_SUMMARIES_DATA_PATH = Path("data/user_summaries/")
 
 
 def get_channels_id() -> list:
@@ -45,11 +46,11 @@ def read_transcript(video_id: str) -> YoutubeVideoTranscript:
     return YoutubeVideoTranscript.model_validate(json_data)
 
 
-def read_transcripts() -> List[YoutubeVideoTranscript]:
+def read_transcripts() -> YoutubeVideoTranscriptList:
     transcripts_list = []
     for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
         transcripts_list.append(read_transcript(transcript_file_path.stem))
-    return transcripts_list
+    return YoutubeVideoTranscriptList(transcripts=transcripts_list)
 
 
 def read_channels_state() -> YoutubeChannelList:
@@ -62,3 +63,17 @@ def read_channels_state() -> YoutubeChannelList:
 def is_new(video_id: str) -> bool:
     existing_video_ids = [file.stem for file in TRANSCRIPTS_DATA_PATH.rglob("*.json")]
     return video_id not in existing_video_ids
+
+
+def read_summary(video_id: str, step: str):
+    if step == "base":
+        summary_path = BASE_SUMMARIES_DATA_PATH
+    elif step == "user":
+        summary_path = USER_SUMMARIES_DATA_PATH
+    else:
+        raise ValueError
+
+    transcript_file_path = summary_path / f"{video_id}.json"
+    with open(transcript_file_path) as file:
+        json_data = json.load(file)
+    return YoutubeVideoTranscript.model_validate(json_data)

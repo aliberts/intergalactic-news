@@ -8,6 +8,8 @@
 # Data
 data/*.json
 data/transcripts/*.json
+data/base_summaries/*.json
+data/user_summaries/*.json
 data/prompts/
 
 # Byte-compiled / optimized / DLL files
