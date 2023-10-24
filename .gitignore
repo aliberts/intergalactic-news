@@ -8,6 +8,7 @@
 # Data
 data/*.json
 data/transcripts/*.json
+data/prompts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
