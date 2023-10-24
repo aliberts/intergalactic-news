@@ -1,60 +1,10 @@
-import json
-from pathlib import Path
-
-import yaml
 from unidecode import unidecode
 
 from inews.domain import preprocessing
-from inews.infra import apis
-from inews.infra.models import (
-    YoutubeChannelList,
-    YoutubeVideoTranscript,
-    YoutubeVideoTranscriptList,
-)
-
-CHANNELS_ID_FILE = Path("config/channels_id.yaml")
-CHANNELS_STATE_FILE = Path("data/channels_state.json")
-TRANSCRIPTS_DATA_PATH = Path("data/transcripts/")
+from inews.infra import apis, io
+from inews.infra.models import YoutubeChannelList, YoutubeVideoTranscriptList
 
 youtube_api = apis.get_youtube()
-
-
-def write_channels_state(channels_obj_list) -> None:
-    with open(CHANNELS_STATE_FILE, "w") as file:
-        json.dump(channels_obj_list.model_dump(mode="json"), file, indent=4)
-
-
-def write_transcript(transcript_obj: YoutubeVideoTranscript) -> None:
-    file_name = f"{transcript_obj.video_id}.json"
-    file_path = TRANSCRIPTS_DATA_PATH / file_name
-    with open(file_path, "w") as file:
-        json.dump(transcript_obj.model_dump(mode="json"), file, indent=4)
-
-
-def write_transcripts(transcripts_obj_list: YoutubeVideoTranscriptList) -> None:
-    for transcript_obj in transcripts_obj_list.transcripts:
-        write_transcript(transcript_obj)
-
-
-def read_transcripts() -> YoutubeVideoTranscript:
-    transcripts_list = []
-    for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
-        with open(transcript_file_path) as file:
-            json_data = json.load(file)
-        transcripts_list.append(YoutubeVideoTranscript.model_validate(json_data))
-    return transcripts_list
-
-
-def read_channels_state() -> YoutubeChannelList:
-    with open(CHANNELS_STATE_FILE) as file:
-        json_data = json.load(file)
-    channels_obj_list = YoutubeChannelList.model_validate(json_data)
-    return channels_obj_list
-
-
-def is_new(video_id: str) -> bool:
-    existing_video_ids = [file.stem for file in TRANSCRIPTS_DATA_PATH.rglob("*.json")]
-    return video_id not in existing_video_ids
 
 
 def get_recent_videos(uploads_playlist_id, number_of_videos=3) -> list:
@@ -87,8 +37,7 @@ def get_recent_videos(uploads_playlist_id, number_of_videos=3) -> list:
 
 
 def initialize_channels_state():
-    with open(CHANNELS_ID_FILE) as file:
-        channels_id = yaml.safe_load(file)
+    channels_id = io.get_channels_id()
     channels_list = []
 
     # get uploads playlist id
@@ -110,7 +59,7 @@ def initialize_channels_state():
         channel["recent_videos"] = get_recent_videos(channel["uploads_playlist_id"])
 
     channels_obj_list = YoutubeChannelList(channels=channels_list)
-    write_channels_state(channels_obj_list)
+    io.write_channels_state(channels_obj_list)
 
     return channels_obj_list
 
@@ -120,7 +69,7 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
     transcripts_list = []
     for channel in channels_obj_list.channels:
         for video in channel.recent_videos:
-            if is_new(video.id):
+            if io.is_new(video.id):
                 try:
                     available_transcript = yt_transcript_api.list_transcripts(
                         video.id
@@ -144,5 +93,5 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
                 )
 
     transcripts_obj_list = YoutubeVideoTranscriptList(transcripts=transcripts_list)
-    write_transcripts(transcripts_obj_list)
+    io.write_transcripts(transcripts_obj_list)
     return transcripts_obj_list

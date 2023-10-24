@@ -2,7 +2,7 @@ from pathlib import Path
 from statistics import mean
 
 from inews.domain import preprocessing
-from inews.domain.youtube import read_transcripts
+from inews.infra import io
 
 PROMPTS_DATA_PATH = Path("data/prompts/")
 
@@ -66,7 +66,7 @@ USER_SCIENCE_LEVEL_CHOICE = [
 
 
 def generate_prompts():
-    transcript_list = read_transcripts()
+    transcript_list = io.read_transcripts()
     for idx, transcript in enumerate(transcript_list):
         if transcript.tokens_count < 500:
             transcript_list.pop(idx)
@@ -94,7 +94,7 @@ def generate_prompts():
 
 
 def get_transcripts_stats():
-    transcript_list = read_transcripts()
+    transcript_list = io.read_transcripts()
     for idx, transcript in enumerate(transcript_list):
         if transcript.tokens_count < 500:
             transcript_list.pop(idx)
