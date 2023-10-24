@@ -4,9 +4,12 @@ from pathlib import Path
 import yaml
 
 from inews.infra.models import (
-    YoutubeChannelList,
-    YoutubeVideoTranscript,
-    YoutubeVideoTranscriptList,
+    BaseSummary,
+    BaseSummaryList,
+    ChannelList,
+    Transcript,
+    TranscriptList,
+    UserSummary,
 )
 
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
@@ -22,50 +25,58 @@ def get_channels_id() -> list:
     return channels_id
 
 
-def write_channels_state(channels_obj_list) -> None:
+def write_channels_state(channels_list) -> None:
     with open(CHANNELS_STATE_FILE, "w") as file:
-        json.dump(channels_obj_list.model_dump(mode="json"), file, indent=4)
+        json.dump(channels_list.model_dump(mode="json"), file, indent=4)
 
 
-def write_transcript(transcript_obj: YoutubeVideoTranscript) -> None:
-    file_name = f"{transcript_obj.video_id}.json"
+def write_transcript(transcript: Transcript) -> None:
+    file_name = f"{transcript.video_id}.json"
     file_path = TRANSCRIPTS_DATA_PATH / file_name
     with open(file_path, "w") as file:
-        json.dump(transcript_obj.model_dump(mode="json"), file, indent=4)
+        json.dump(transcript.model_dump(mode="json"), file, indent=4)
 
 
-def write_transcripts(transcripts_obj_list: YoutubeVideoTranscriptList) -> None:
-    for transcript_obj in transcripts_obj_list.transcripts:
-        write_transcript(transcript_obj)
+def write_transcripts(transcripts_list: TranscriptList) -> None:
+    for transcript in transcripts_list:
+        write_transcript(transcript)
 
 
-def read_transcript(video_id: str) -> YoutubeVideoTranscript:
+def read_transcript(video_id: str) -> Transcript:
     transcript_file_path = TRANSCRIPTS_DATA_PATH / f"{video_id}.json"
     with open(transcript_file_path) as file:
         json_data = json.load(file)
-    return YoutubeVideoTranscript.model_validate(json_data)
+    return Transcript.model_validate(json_data)
 
 
-def read_transcripts() -> YoutubeVideoTranscriptList:
+def read_transcripts() -> TranscriptList:
     transcripts_list = []
     for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
         transcripts_list.append(read_transcript(transcript_file_path.stem))
-    return YoutubeVideoTranscriptList(transcripts=transcripts_list)
+    return TranscriptList.model_validate(transcripts_list)
 
 
-def read_channels_state() -> YoutubeChannelList:
+def read_transcripts_from_channel_list(channels_list: ChannelList) -> TranscriptList:
+    transcripts_list = []
+    for channel in channels_list:
+        for video in channel.recent_videos:
+            transcripts_list.append(read_transcript(video.id))
+    return TranscriptList.model_validate(transcripts_list)
+
+
+def read_channels_state() -> ChannelList:
     with open(CHANNELS_STATE_FILE) as file:
         json_data = json.load(file)
-    channels_obj_list = YoutubeChannelList.model_validate(json_data)
-    return channels_obj_list
+    channels_list = ChannelList.model_validate(json_data)
+    return channels_list
 
 
 def is_new(video_id: str) -> bool:
-    existing_video_ids = [file.stem for file in TRANSCRIPTS_DATA_PATH.rglob("*.json")]
-    return video_id not in existing_video_ids
+    existing_videos_id = [file.stem for file in TRANSCRIPTS_DATA_PATH.rglob("*.json")]
+    return video_id not in existing_videos_id
 
 
-def read_summary(video_id: str, step: str):
+def read_summary(video_id: str, step: str) -> BaseSummary:
     if step == "base":
         summary_path = BASE_SUMMARIES_DATA_PATH
     elif step == "user":
@@ -76,4 +87,24 @@ def read_summary(video_id: str, step: str):
     transcript_file_path = summary_path / f"{video_id}.json"
     with open(transcript_file_path) as file:
         json_data = json.load(file)
-    return YoutubeVideoTranscript.model_validate(json_data)
+    return BaseSummary.model_validate(json_data)
+
+
+def write_base_summaries(summary_list: BaseSummaryList) -> None:
+    for summary in summary_list:
+        file_name = f"{summary.video_id}.json"
+        file_path = BASE_SUMMARIES_DATA_PATH / file_name
+        with open(file_path, "w") as file:
+            json.dump(summary.model_dump(mode="json"), file, indent=4)
+
+
+def write_user_summaries(user_summary: UserSummary) -> None:
+    for summary in user_summary.summaries:
+        file_name = f"{summary.video_id}.json"
+        file_path = USER_SUMMARIES_DATA_PATH / file_name
+        with open(file_path, "w") as file:
+            json.dump(
+                (user_summary.user.model_dump(mode="json"), summary.model_dump(mode="json")),
+                file,
+                indent=4,
+            )

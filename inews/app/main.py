@@ -1,5 +1,6 @@
 from inews.domain import openai, youtube
 from inews.infra import io
+from inews.infra.models import User
 
 # initialize = True
 initialize = False
@@ -7,14 +8,15 @@ initialize = False
 
 def main():
     if initialize:
-        channels_obj_list = youtube.initialize_channels_state()
-        transcripts_obj_list = youtube.get_transcripts(channels_obj_list)
+        channels_list = youtube.initialize_channels_state()
+        transcripts_list = youtube.get_transcripts(channels_list)
     else:
-        channels_obj_list = io.read_channels_state()
-        transcripts_obj_list = io.read_transcripts()
+        channels_list = io.read_channels_state()
+        transcripts_list = io.read_transcripts()
 
-    transcripts_obj_list.transcripts = [transcripts_obj_list.transcripts[0]]
-    openai.get_base_summaries(transcripts_obj_list)
+    summary_list = openai.get_base_summaries(transcripts_list)
+    user = User(age=21, science_level="an expert")
+    openai.get_user_summaries(summary_list, user)
 
 
 if __name__ == "__main__":

@@ -2,12 +2,12 @@ from unidecode import unidecode
 
 from inews.domain import preprocessing
 from inews.infra import apis, io
-from inews.infra.models import YoutubeChannelList, YoutubeVideoTranscriptList
+from inews.infra.models import ChannelList, TranscriptList
 
 youtube_api = apis.get_youtube()
 
 
-def get_recent_videos(uploads_playlist_id, number_of_videos=3) -> list:
+def get_recent_videos(uploads_playlist_id: list, number_of_videos: int = 3) -> list:
     max_results = 5 * number_of_videos
     request = youtube_api.playlistItems().list(
         part="snippet", maxResults=max_results, playlistId=uploads_playlist_id
@@ -58,16 +58,16 @@ def initialize_channels_state():
     for channel in channels_list:
         channel["recent_videos"] = get_recent_videos(channel["uploads_playlist_id"])
 
-    channels_obj_list = YoutubeChannelList(channels=channels_list)
+    channels_obj_list = ChannelList.model_validate(channels_list)
     io.write_channels_state(channels_obj_list)
 
     return channels_obj_list
 
 
-def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTranscriptList:
+def get_transcripts(channels_list: ChannelList) -> TranscriptList:
     yt_transcript_api = apis.get_yt_transcript()
     transcripts_list = []
-    for channel in channels_obj_list.channels:
+    for channel in channels_list:
         for video in channel.recent_videos:
             if io.is_new(video.id):
                 try:
@@ -92,6 +92,6 @@ def get_transcripts(channels_obj_list: YoutubeChannelList) -> YoutubeVideoTransc
                     }
                 )
 
-    transcripts_obj_list = YoutubeVideoTranscriptList(transcripts=transcripts_list)
+    transcripts_obj_list = TranscriptList.model_validate(transcripts_list)
     io.write_transcripts(transcripts_obj_list)
     return transcripts_obj_list

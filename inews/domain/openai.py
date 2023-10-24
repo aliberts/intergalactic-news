@@ -1,19 +1,19 @@
 from inews.domain import preprocessing, prompts
-from inews.infra import apis
+from inews.infra import apis, io
 from inews.infra.models import (
     BaseSummary,
     BaseSummaryList,
+    Transcript,
+    TranscriptList,
     User,
     UserSummary,
-    YoutubeVideoTranscript,
-    YoutubeVideoTranscriptList,
 )
 
 openai_api = apis.get_openai()
 TEMPERATURE = 0.4
 
 
-def generate_base_prompt(transcript: YoutubeVideoTranscript) -> str:
+def generate_base_prompt(transcript: Transcript) -> str:
     return prompts.BASE_SUMMARY.format(
         video_title=transcript.video_title,
         channel_name=transcript.channel_name,
@@ -37,23 +37,22 @@ def get_model_response(prompt: str) -> str:
         temperature=TEMPERATURE,
         messages=[{"role": "user", "content": prompt}],
     )
-    # return prompts.SUMMARY
     return completion.choices[0].message.content
 
 
-def get_base_summary(transcript: YoutubeVideoTranscript) -> str:
+def get_base_summary(transcript: Transcript) -> str:
     prompt = generate_base_prompt(transcript)
     return get_model_response(prompt)
 
 
 def get_base_summaries(
-    transcripts_obj_list: YoutubeVideoTranscriptList,
+    transcripts_list: TranscriptList,
 ) -> BaseSummaryList:
-    summary_obj_list = []
-    for transcript in transcripts_obj_list.transcripts:
+    summary_list = []
+    for transcript in transcripts_list:
         summary = get_base_summary(transcript)
         tokens_count = preprocessing.count_tokens(summary)
-        summary_obj_list.append(
+        summary_list.append(
             {
                 "video_id": transcript.video_id,
                 "video_title": transcript.video_title,
@@ -65,7 +64,9 @@ def get_base_summaries(
                 "summary": summary,
             }
         )
-    return BaseSummaryList(transcripts=summary_obj_list)
+    summary_list = BaseSummaryList.model_validate(summary_list)
+    io.write_base_summaries(summary_list)
+    return summary_list
 
 
 def get_user_summary(summary: BaseSummary, user: User) -> UserSummary:
@@ -73,21 +74,23 @@ def get_user_summary(summary: BaseSummary, user: User) -> UserSummary:
     return get_model_response(prompt)
 
 
-def get_user_summaries(summary_obj_list: BaseSummaryList, user: User) -> UserSummary:
-    summary_obj_list = []
-    for summary in summary_obj_list.summaries:
-        summary = get_user_summary(summary, user)
-        tokens_count = preprocessing.count_tokens(summary)
-        summary_obj_list.append(
+def get_user_summaries(base_summary_list: BaseSummaryList, user: User) -> UserSummary:
+    user_summary_list = []
+    for base_summary in base_summary_list:
+        user_summary = get_user_summary(base_summary, user)
+        tokens_count = preprocessing.count_tokens(user_summary)
+        user_summary_list.append(
             {
-                "video_id": summary.video_id,
-                "video_title": summary.video_title,
-                "channel_id": summary.channel_id,
-                "channel_name": summary.channel_name,
-                "date": summary.date,
-                "from_generated": summary.is_generated,
+                "video_id": base_summary.video_id,
+                "video_title": base_summary.video_title,
+                "channel_id": base_summary.channel_id,
+                "channel_name": base_summary.channel_name,
+                "date": base_summary.date,
+                "from_generated": base_summary.from_generated,
                 "tokens_count": tokens_count,
-                "summary": summary,
+                "summary": user_summary,
             }
         )
-    return UserSummary(user=user, summaries=summary_obj_list)
+    user_summary = UserSummary(user=user, summaries=user_summary_list)
+    io.write_user_summaries(user_summary)
+    return user_summary

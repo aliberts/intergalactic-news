@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 
-class YoutubeVideoTranscript(BaseModel):
+class Transcript(BaseModel):
     video_id: str
     video_title: str
     channel_id: str
@@ -15,29 +15,74 @@ class YoutubeVideoTranscript(BaseModel):
     transcript: str
 
 
-class YoutubeVideoTranscriptList(BaseModel):
-    transcripts: List[YoutubeVideoTranscript]
+class TranscriptList(RootModel):
+    root: List[Transcript]
+
+    def __iter__(self):
+        return iter(self.root)
+
+    def __getitem__(self, key):
+        return self.root[key]
+
+    def __setitem__(self, key, item):
+        self.root[key] = item
+
+    def __len__(self):
+        return len(self.root)
+
+    def pop(self, key):
+        self.root.pop(key)
 
 
-class YoutubeVideo(BaseModel):
+class Video(BaseModel):
     id: str
     title: str
     date: datetime
 
 
-class YoutubeChannel(BaseModel):
+class VideoList(RootModel):
+    root: List[Video]
+
+    def __iter__(self):
+        return iter(self.root)
+
+    def __getitem__(self, key):
+        return self.root[key]
+
+    def __setitem__(self, key, item):
+        self.root[key] = item
+
+    def __len__(self):
+        return len(self.root)
+
+    def pop(self, key):
+        self.root.pop(key)
+
+
+class Channel(BaseModel):
     id: str
     name: str
     uploads_playlist_id: str
-    recent_videos: List[YoutubeVideo]
+    recent_videos: VideoList
 
 
-class YoutubeChannelList(BaseModel):
-    channels: List[YoutubeChannel]
+class ChannelList(RootModel):
+    root: List[Channel]
 
+    def __iter__(self):
+        return iter(self.root)
 
-class YoutubeVideoList(BaseModel):
-    videos: List[YoutubeVideo]
+    def __getitem__(self, key):
+        return self.root[key]
+
+    def __setitem__(self, key, item):
+        self.root[key] = item
+
+    def __len__(self):
+        return len(self.root)
+
+    def pop(self, key):
+        self.root.pop(key)
 
 
 class User(BaseModel):
@@ -65,10 +110,25 @@ class BaseSummary(BaseModel):
     summary: str
 
 
-class BaseSummaryList(BaseModel):
-    summaries: List[BaseSummary]
+class BaseSummaryList(RootModel):
+    root: List[BaseSummary]
+
+    def __iter__(self):
+        return iter(self.root)
+
+    def __getitem__(self, key):
+        return self.root[key]
+
+    def __setitem__(self, key, item):
+        self.root[key] = item
+
+    def __len__(self):
+        return len(self.root)
+
+    def pop(self, key):
+        self.root.pop(key)
 
 
 class UserSummary(BaseModel):
     user: User
-    summaries: List[BaseSummary]
+    summaries: BaseSummaryList
