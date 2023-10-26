@@ -13,7 +13,7 @@ mainly about astronomy and astrophysics and relevant news in these fields.
 The title of the video is "{video_title}".
 
 Write a short summary (3-4 paragraphs) of this transcript, intended to be read
-and understood by {user_age} with {user_science_level}-level scientific
+and understood by {user_age} with {user_science_cat}-level scientific
 background. The language should be neutral and tailored for this specific
 audience. At the end, explain how the topic of the video is relevant to someone
 having an interest in astrophysics, astronomy or astronautics.
@@ -98,7 +98,7 @@ understanding of the universe.
 
 
 def generate_prompts():
-    transcript_list = io.read_transcripts()
+    transcript_list = io.read_available_transcripts()
     for idx, transcript in enumerate(transcript_list):
         if transcript.tokens_count < 500:
             transcript_list.pop(idx)
@@ -106,7 +106,7 @@ def generate_prompts():
     for transcript in transcript_list:
         prompt1 = PROMPT1_TEMPLATE.format(
             user_age=USER_AGE_CHOICE[2],
-            user_science_level=USER_SCIENCE_LEVEL_CHOICE[2],
+            user_science_cat=USER_SCIENCE_LEVEL_CHOICE[2],
             video_title=transcript.video_title,
             channel_name=transcript.channel_name,
             transcript=transcript.transcript,
@@ -126,7 +126,7 @@ def generate_prompts():
 
 
 def get_transcripts_stats():
-    transcript_list = io.read_transcripts()
+    transcript_list = io.read_available_transcripts()
     for idx, transcript in enumerate(transcript_list):
         if transcript.tokens_count < 500:
             transcript_list.pop(idx)
@@ -136,7 +136,7 @@ def get_transcripts_stats():
     for transcript in transcript_list:
         prompt1 = PROMPT1_TEMPLATE.format(
             user_age=USER_AGE_CHOICE[2],
-            user_science_level=USER_SCIENCE_LEVEL_CHOICE[2],
+            user_science_cat=USER_SCIENCE_LEVEL_CHOICE[2],
             video_title=transcript.video_title,
             channel_name=transcript.channel_name,
             transcript=transcript.transcript,

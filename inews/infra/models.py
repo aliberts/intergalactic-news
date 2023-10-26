@@ -1,7 +1,31 @@
 from datetime import datetime
-from typing import List
+from typing import Any, List, Literal
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, Field, RootModel
+
+# TODO: Type VideoID with regex: ([A-Za-z0-9_\-]{11})
+
+
+class RootModelList(RootModel):
+    root: List[Any]
+
+    def __iter__(self):
+        return iter(self.root)
+
+    def __getitem__(self, key):
+        return self.root[key]
+
+    def __setitem__(self, key, item):
+        self.root[key] = item
+
+    def __len__(self):
+        return len(self.root)
+
+    def append(self, item):
+        self.root.append(item)
+
+    def pop(self, key):
+        self.root.pop(key)
 
 
 class Transcript(BaseModel):
@@ -15,23 +39,8 @@ class Transcript(BaseModel):
     transcript: str
 
 
-class TranscriptList(RootModel):
+class TranscriptList(RootModelList):
     root: List[Transcript]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def __setitem__(self, key, item):
-        self.root[key] = item
-
-    def __len__(self):
-        return len(self.root)
-
-    def pop(self, key):
-        self.root.pop(key)
 
 
 class Video(BaseModel):
@@ -40,23 +49,8 @@ class Video(BaseModel):
     date: datetime
 
 
-class VideoList(RootModel):
+class VideoList(RootModelList):
     root: List[Video]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def __setitem__(self, key, item):
-        self.root[key] = item
-
-    def __len__(self):
-        return len(self.root)
-
-    def pop(self, key):
-        self.root.pop(key)
 
 
 class Channel(BaseModel):
@@ -66,69 +60,39 @@ class Channel(BaseModel):
     recent_videos: VideoList
 
 
-class ChannelList(RootModel):
+class ChannelList(RootModelList):
     root: List[Channel]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def __setitem__(self, key, item):
-        self.root[key] = item
-
-    def __len__(self):
-        return len(self.root)
-
-    def pop(self, key):
-        self.root.pop(key)
 
 
 class User(BaseModel):
-    age: int
-    science_level: str
-
-    @property
-    def age_bin(self):
-        if self.age <= 10:
-            return ("a 6 years-old child",)
-        elif self.age > 10 and self.age <= 18:
-            return ("a 14 years-old teenager",)
-        elif self.age > 18:
-            return ("an adult",)
+    age_cat: Literal[0, 1, 2]
+    science_cat: Literal[0, 1, 2]
 
 
 class BaseSummary(BaseModel):
+    tokens_count: int
+    summary: str
+
+
+class SummaryInfo(BaseModel):
     video_id: str
     video_title: str
     channel_id: str
     channel_name: str
     date: datetime
     from_generated: bool
-    tokens_count: int
-    summary: str
-
-
-class BaseSummaryList(RootModel):
-    root: List[BaseSummary]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def __setitem__(self, key, item):
-        self.root[key] = item
-
-    def __len__(self):
-        return len(self.root)
-
-    def pop(self, key):
-        self.root.pop(key)
 
 
 class UserSummary(BaseModel):
     user: User
-    summaries: BaseSummaryList
+    summary: str
+
+
+class UserSummaryList(RootModelList):
+    root: List[UserSummary]
+
+
+class Summary(BaseModel):
+    infos: SummaryInfo
+    base_summary: BaseSummary
+    user_summaries: UserSummaryList = Field(default_factory=lambda: [])

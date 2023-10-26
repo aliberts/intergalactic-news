@@ -3,20 +3,12 @@ from pathlib import Path
 
 import yaml
 
-from inews.infra.models import (
-    BaseSummary,
-    BaseSummaryList,
-    ChannelList,
-    Transcript,
-    TranscriptList,
-    UserSummary,
-)
+from inews.infra.models import ChannelList, Summary, Transcript, TranscriptList
 
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_STATE_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_DATA_PATH = Path("data/transcripts/")
-BASE_SUMMARIES_DATA_PATH = Path("data/base_summaries/")
-USER_SUMMARIES_DATA_PATH = Path("data/user_summaries/")
+SUMMARIES_DATA_PATH = Path("data/summaries/")
 
 
 def get_channels_id() -> list:
@@ -49,7 +41,7 @@ def read_transcript(video_id: str) -> Transcript:
     return Transcript.model_validate(json_data)
 
 
-def read_transcripts() -> TranscriptList:
+def read_available_transcripts() -> TranscriptList:
     transcripts_list = []
     for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
         transcripts_list.append(read_transcript(transcript_file_path.stem))
@@ -76,35 +68,16 @@ def is_new(video_id: str) -> bool:
     return video_id not in existing_videos_id
 
 
-def read_summary(video_id: str, step: str) -> BaseSummary:
-    if step == "base":
-        summary_path = BASE_SUMMARIES_DATA_PATH
-    elif step == "user":
-        summary_path = USER_SUMMARIES_DATA_PATH
-    else:
-        raise ValueError
-
-    transcript_file_path = summary_path / f"{video_id}.json"
-    with open(transcript_file_path) as file:
+def read_summary(video_id: str) -> Summary:
+    file_name = f"{video_id}.json"
+    file_path = SUMMARIES_DATA_PATH / file_name
+    with open(file_path) as file:
         json_data = json.load(file)
-    return BaseSummary.model_validate(json_data)
+    return Summary.model_validate(json_data)
 
 
-def write_base_summaries(summary_list: BaseSummaryList) -> None:
-    for summary in summary_list:
-        file_name = f"{summary.video_id}.json"
-        file_path = BASE_SUMMARIES_DATA_PATH / file_name
-        with open(file_path, "w") as file:
-            json.dump(summary.model_dump(mode="json"), file, indent=4)
-
-
-def write_user_summaries(user_summary: UserSummary) -> None:
-    for summary in user_summary.summaries:
-        file_name = f"{summary.video_id}.json"
-        file_path = USER_SUMMARIES_DATA_PATH / file_name
-        with open(file_path, "w") as file:
-            json.dump(
-                (user_summary.user.model_dump(mode="json"), summary.model_dump(mode="json")),
-                file,
-                indent=4,
-            )
+def write_summary(summary: Summary) -> None:
+    file_name = f"{summary.infos.video_id}.json"
+    file_path = SUMMARIES_DATA_PATH / file_name
+    with open(file_path, "w") as file:
+        json.dump(summary.model_dump(mode="json"), file, indent=4)

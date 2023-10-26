@@ -1,3 +1,15 @@
+AGE_CAT_TO_PROMPT = [
+    "a 6 years-old child",
+    "a 14 years-old teenager",
+    "an adult",
+]
+
+SCIENCE_CAT_TO_PROMPT = [
+    "a beginner",
+    "an average",
+    "an expert",
+]
+
 BASE_SUMMARY = """The following is the transcript of a
 youtube video by youtube channel {channel_name}. This is a channel that talks
 mainly about astronomy and astrophysics and relevant news in these fields.
@@ -20,7 +32,7 @@ talks mainly about astronomy and astrophysics and relevant news in these fields.
 The title of the video is "{video_title}".
 
 Adapt this to a short summary (3-4 paragraphs) of this transcript, intended to
-be read and understood by {user_age} with {user_science_level}-level scientific
+be read and understood by {user_age} with {user_science_cat}-level scientific
 background. The language should be neutral and tailored for this specific
 audience. At the end, explain why the topic of the video is relevant to someone
 having an interest in astrophysics, astronomy or astronautics.
@@ -28,7 +40,7 @@ having an interest in astrophysics, astronomy or astronautics.
 Summarized transcript: {summary}"""
 
 
-SUMMARY = """The Gaia Space Telescope, known for its detailed
+BASE_SUMMARY_EXAMPLE = """The Gaia Space Telescope, known for its detailed
 mapping of the sky, recently released a new set of data called the focused
 product release (FPR), which contains information on approximately 1.8 billion
 stars as well as other objects in the solar system. One of the notable
