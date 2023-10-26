@@ -28,11 +28,7 @@ def generate_user_prompt(summary: Summary, user: User) -> str:
 def get_model_response(prompt: str) -> str:
     return prompts.BASE_SUMMARY_EXAMPLE
     tokens_count = preprocessing.count_tokens(prompt)
-    if tokens_count > WINDOW_THRESHOLD:
-        model = "gpt-3.5-turbo-16k"
-    else:
-        model = "gpt-3.5-turbo"
-
+    model = "gpt-3.5-turbo-16k" if tokens_count > WINDOW_THRESHOLD else "gpt-3.5-turbo"
     completion = openai_api.ChatCompletion.create(
         model=model,
         temperature=TEMPERATURE,
