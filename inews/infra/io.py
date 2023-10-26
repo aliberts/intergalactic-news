@@ -9,14 +9,34 @@ from inews.infra.models import ChannelList, Summary, Transcript, TranscriptList,
 s3 = boto3.resource("s3")
 
 BUCKET = "intergalactic-news"
+CHANNELS_S3_FILE = "channels_state.json"
+TRANSCRIPTS_S3_PATH = "transcripts/"
+SUMMARIES_S3_PATH = "summaries/"
+
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
 SUMMARIES_LOCAL_PATH = Path("data/summaries/")
 
-CHANNELS_S3_FILE = "channels_state.json"
-TRANSCRIPTS_S3_PATH = "transcripts/"
-SUMMARIES_S3_PATH = "summaries/"
+
+def clear_bucket() -> None:
+    bucket = s3.Bucket(BUCKET)
+    to_delete = []
+    for object in bucket.objects.all():
+        if object.key.endswith("json"):
+            to_delete.append({"Key": object.key})
+
+    bucket.delete_objects(Delete={"Objects": to_delete})
+
+
+def clear_local() -> None:
+    CHANNELS_LOCAL_FILE.unlink()
+
+    for transcript_file_path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
+        transcript_file_path.unlink()
+
+    for summary_file_path in SUMMARIES_LOCAL_PATH.rglob("*.json"):
+        summary_file_path.unlink()
 
 
 def pull_from_bucket() -> None:
