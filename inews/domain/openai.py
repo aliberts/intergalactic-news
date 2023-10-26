@@ -1,18 +1,10 @@
 from inews.domain import preprocessing, prompts
-from inews.infra import apis, io
-from inews.infra.models import (
-    BaseSummary,
-    Summary,
-    SummaryInfo,
-    Transcript,
-    TranscriptList,
-    User,
-    UserSummary,
-)
+from inews.infra import apis
+from inews.infra.models import BaseSummary, Summary, SummaryInfo, Transcript, User, UserSummary
 
 openai_api = apis.get_openai()
-TEMPERATURE = 0.4
 WINDOW_THRESHOLD = 3500
+TEMPERATURE = 0.4
 
 
 def generate_base_prompt(transcript: Transcript) -> str:
@@ -34,7 +26,7 @@ def generate_user_prompt(summary: Summary, user: User) -> str:
 
 
 def get_model_response(prompt: str) -> str:
-    # return prompts.BASE_SUMMARY_EXAMPLE
+    return prompts.BASE_SUMMARY_EXAMPLE
     tokens_count = preprocessing.count_tokens(prompt)
     if tokens_count > WINDOW_THRESHOLD:
         model = "gpt-3.5-turbo-16k"
@@ -65,28 +57,12 @@ def get_user_summary(summary: Summary, user: User) -> UserSummary:
 def get_summary_info(transcript: Transcript) -> SummaryInfo:
     return SummaryInfo(
         **{
-            "video_id": transcript.video_id,
-            "video_title": transcript.video_title,
             "channel_id": transcript.channel_id,
             "channel_name": transcript.channel_name,
+            "video_id": transcript.video_id,
+            "video_title": transcript.video_title,
             "date": transcript.date,
+            "duration": transcript.duration,
             "from_generated": transcript.is_generated,
         }
     )
-
-
-def build_summaries(transcripts_list: TranscriptList) -> dict[str:BaseSummary]:
-    users = [User(age_cat=2, science_cat=0), User(age_cat=0, science_cat=2)]
-    for transcript in transcripts_list:
-        summary_info = get_summary_info(transcript)
-        base_summary = get_base_summary(transcript)
-        summary = Summary(
-            infos=summary_info,
-            base_summary=base_summary,
-            user_summaries=[],
-        )
-        io.write_summary(summary)  # checkpoint to save base summaries first)
-        for user in users:
-            user_summary = get_user_summary(summary, user)
-            summary.user_summaries.append(user_summary)
-        io.write_summary(summary)

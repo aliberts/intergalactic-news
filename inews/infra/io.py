@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from inews.infra.models import ChannelList, Summary, Transcript, TranscriptList
+from inews.infra.models import ChannelList, Summary, Transcript, TranscriptList, VideoID
 
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_STATE_FILE = Path("data/channels_state.json")
@@ -17,9 +17,15 @@ def get_channels_id() -> list:
     return channels_id
 
 
-def write_channels_state(channels_list) -> None:
+def write_channels_state(channels_list: ChannelList) -> None:
     with open(CHANNELS_STATE_FILE, "w") as file:
         json.dump(channels_list.model_dump(mode="json"), file, indent=4)
+
+
+def read_channels_state() -> ChannelList:
+    with open(CHANNELS_STATE_FILE) as file:
+        json_data = json.load(file)
+    return ChannelList.model_validate(json_data)
 
 
 def write_transcript(transcript: Transcript) -> None:
@@ -34,21 +40,14 @@ def write_transcripts(transcripts_list: TranscriptList) -> None:
         write_transcript(transcript)
 
 
-def read_transcript(video_id: str) -> Transcript:
+def read_transcript(video_id: VideoID) -> Transcript:
     transcript_file_path = TRANSCRIPTS_DATA_PATH / f"{video_id}.json"
     with open(transcript_file_path) as file:
         json_data = json.load(file)
     return Transcript.model_validate(json_data)
 
 
-def read_available_transcripts() -> TranscriptList:
-    transcripts_list = []
-    for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
-        transcripts_list.append(read_transcript(transcript_file_path.stem))
-    return TranscriptList.model_validate(transcripts_list)
-
-
-def read_transcripts_from_channel_list(channels_list: ChannelList) -> TranscriptList:
+def read_transcripts(channels_list: ChannelList) -> TranscriptList:
     transcripts_list = []
     for channel in channels_list:
         for video in channel.recent_videos:
@@ -56,19 +55,19 @@ def read_transcripts_from_channel_list(channels_list: ChannelList) -> Transcript
     return TranscriptList.model_validate(transcripts_list)
 
 
-def read_channels_state() -> ChannelList:
-    with open(CHANNELS_STATE_FILE) as file:
-        json_data = json.load(file)
-    channels_list = ChannelList.model_validate(json_data)
-    return channels_list
+def read_all_transcripts() -> TranscriptList:
+    transcripts_list = []
+    for transcript_file_path in TRANSCRIPTS_DATA_PATH.rglob("*.json"):
+        transcripts_list.append(read_transcript(transcript_file_path.stem))
+    return TranscriptList.model_validate(transcripts_list)
 
 
-def is_new(video_id: str) -> bool:
+def is_new(video_id: VideoID) -> bool:
     existing_videos_id = [file.stem for file in TRANSCRIPTS_DATA_PATH.rglob("*.json")]
     return video_id not in existing_videos_id
 
 
-def read_summary(video_id: str) -> Summary:
+def read_summary(video_id: VideoID) -> Summary:
     file_name = f"{video_id}.json"
     file_path = SUMMARIES_DATA_PATH / file_name
     with open(file_path) as file:

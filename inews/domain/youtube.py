@@ -2,96 +2,99 @@ from unidecode import unidecode
 
 from inews.domain import preprocessing
 from inews.infra import apis, io
-from inews.infra.models import ChannelList, TranscriptList
+from inews.infra.models import Channel, ChannelList, Transcript, TranscriptList, Video, VideoID
 
 youtube_api = apis.get_youtube()
+yt_transcript_api = apis.get_yt_transcript()
 
 
-def get_recent_videos(uploads_playlist_id: list, number_of_videos: int = 3) -> list:
-    max_results = 5 * number_of_videos
-    request = youtube_api.playlistItems().list(
-        part="snippet", maxResults=max_results, playlistId=uploads_playlist_id
+def get_channels_info(channels_id: list) -> ChannelList:
+    request = youtube_api.channels().list(
+        part="snippet,contentDetails", id=channels_id, maxResults=50
     )
     response = request.execute()
 
-    recent_videos_list = []
-    for item in response["items"]:
-        if "#shorts" in item["snippet"]["title"]:
-            # HACK this is a workaround as there is currently no way of checking if
-            # a video is a short or not with playlistItems and the hashtag "#shorts"
-            # is not mandotory in youtube #shorts titles. Might not always work.
-            # TODO use videos().list to check duration of video is > 1mn
-            continue
-        else:
-            recent_videos_list.append(
-                {
-                    "id": item["snippet"]["resourceId"]["videoId"],
-                    "title": unidecode(item["snippet"]["title"]),
-                    "date": item["snippet"]["publishedAt"],
+    channels = []
+    for channel in response["items"]:
+        channels.append(
+            Channel(
+                **{
+                    "id": channel["id"],
+                    "uploads_playlist_id": channel["contentDetails"]["relatedPlaylists"]["uploads"],
+                    "name": channel["snippet"]["title"],
+                    "recent_videos": [],
                 }
             )
-            if len(recent_videos_list) == number_of_videos:
-                break
-
-    return recent_videos_list
+        )
+    return ChannelList.model_validate(channels)
 
 
-def initialize_channels_state():
-    channels_id = io.get_channels_id()
-    channels_list = []
-
-    # get uploads playlist id
-    request = youtube_api.channels().list(
-        part="contentDetails, snippet", id=channels_id, maxResults=50
+def get_channel_recent_videos_id(channel: Channel, number_of_videos: int = 3) -> list[VideoID]:
+    max_results = 5 * number_of_videos
+    request = youtube_api.playlistItems().list(
+        part="snippet", maxResults=max_results, playlistId=channel.uploads_playlist_id
     )
     response = request.execute()
-    for channel in response["items"]:
-        channels_list.append(
-            {
-                "id": channel["id"],
-                "uploads_playlist_id": channel["contentDetails"]["relatedPlaylists"]["uploads"],
-                "name": channel["snippet"]["title"],
-            }
+
+    videos_id = []
+    for item in response["items"]:
+        videos_id.append(item["snippet"]["resourceId"]["videoId"])
+
+    return videos_id
+
+
+def get_videos_info(videos_id: list[VideoID]) -> list[Video]:
+    request = youtube_api.videos().list(part="snippet,contentDetails", id=videos_id)
+    response = request.execute()
+
+    videos = []
+    for item in response["items"]:
+        videos.append(
+            Video(
+                **{
+                    "id": item["id"],
+                    "title": unidecode(item["snippet"]["title"]),
+                    "date": item["snippet"]["publishedAt"],
+                    "duration": item["contentDetails"]["duration"],
+                }
+            )
         )
+    return videos
 
-    # get last upload that are not youtube #shorts
-    for channel in channels_list:
-        channel["recent_videos"] = get_recent_videos(channel["uploads_playlist_id"])
 
-    channels_obj_list = ChannelList.model_validate(channels_list)
-    io.write_channels_state(channels_obj_list)
-
-    return channels_obj_list
+def get_available_transcript(video_id: VideoID):
+    try:
+        return yt_transcript_api.list_transcripts(video_id).find_transcript(["en"])
+    except apis.TranscriptError:
+        return None
 
 
 def get_transcripts(channels_list: ChannelList) -> TranscriptList:
-    yt_transcript_api = apis.get_yt_transcript()
-    transcripts_list = []
+    transcripts = []
     for channel in channels_list:
         for video in channel.recent_videos:
             if io.is_new(video.id):
-                try:
-                    available_transcript = yt_transcript_api.list_transcripts(
-                        video.id
-                    ).find_transcript(["en"])
-                except apis.TranscriptError:
+                available_transcript = get_available_transcript(video.id)
+                if available_transcript is not None:
+                    raw_transcript = available_transcript.fetch()
+                else:
                     continue
-                raw_transcript = available_transcript.fetch()
                 transcript = preprocessing.format_transcript(raw_transcript)
                 tokens_count = preprocessing.count_tokens(transcript)
-                transcripts_list.append(
-                    {
-                        "video_id": video.id,
-                        "video_title": video.title,
-                        "channel_id": channel.id,
-                        "channel_name": channel.name,
-                        "date": video.date,
-                        "is_generated": available_transcript.is_generated,
-                        "tokens_count": tokens_count,
-                        "transcript": transcript,
-                    }
+                transcripts.append(
+                    Transcript(
+                        **{
+                            "channel_id": channel.id,
+                            "channel_name": channel.name,
+                            "video_id": video.id,
+                            "video_title": video.title,
+                            "date": video.date,
+                            "duration": video.duration,
+                            "is_generated": available_transcript.is_generated,
+                            "tokens_count": tokens_count,
+                            "transcript": transcript,
+                        }
+                    )
                 )
 
-    transcripts_obj_list = TranscriptList.model_validate(transcripts_list)
-    io.write_transcripts(transcripts_obj_list)
-    return transcripts_obj_list
+    return TranscriptList.model_validate(transcripts)

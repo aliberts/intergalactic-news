@@ -1,19 +1,19 @@
-from inews.domain import openai, youtube
+from inews.domain import pipeline
 from inews.infra import io
 
-initialize = True
-# initialize = False
+# initialize = True
+initialize = False
 
 
 def main():
     if initialize:
-        channels_list = youtube.initialize_channels_state()
-        transcripts_list = youtube.get_transcripts(channels_list)
+        channels = pipeline.build_channels()
+        transcripts = pipeline.build_transcripts(channels)
     else:
-        channels_list = io.read_channels_state()
-        transcripts_list = io.read_available_transcripts()
+        channels = io.read_channels_state()
+        transcripts = io.read_transcripts(channels)
 
-    openai.build_summaries(transcripts_list)
+    pipeline.build_summaries(transcripts)
 
 
 if __name__ == "__main__":

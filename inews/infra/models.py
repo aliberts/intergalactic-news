@@ -1,13 +1,18 @@
 from datetime import datetime
-from typing import Any, List, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, RootModel, StringConstraints
 
-# TODO: Type VideoID with regex: ([A-Za-z0-9_\-]{11})
+VideoID = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, min_length=11, max_length=11, pattern=r"[A-Za-z0-9_-]{11}"
+    ),
+]
 
 
 class RootModelList(RootModel):
-    root: List[Any]
+    root: list[Any]
 
     def __iter__(self):
         return iter(self.root)
@@ -29,39 +34,37 @@ class RootModelList(RootModel):
 
 
 class Transcript(BaseModel):
-    video_id: str
-    video_title: str
     channel_id: str
     channel_name: str
+    video_id: VideoID
+    video_title: str
     date: datetime
+    duration: str
     is_generated: bool
     tokens_count: int
     transcript: str
 
 
 class TranscriptList(RootModelList):
-    root: List[Transcript]
+    root: list[Transcript]
 
 
 class Video(BaseModel):
-    id: str
+    id: VideoID
     title: str
     date: datetime
-
-
-class VideoList(RootModelList):
-    root: List[Video]
+    duration: str
 
 
 class Channel(BaseModel):
     id: str
     name: str
     uploads_playlist_id: str
-    recent_videos: VideoList
+    recent_videos: list[Video] = Field(default_factory=lambda: [])
 
 
 class ChannelList(RootModelList):
-    root: List[Channel]
+    root: list[Channel]
 
 
 class User(BaseModel):
@@ -75,11 +78,12 @@ class BaseSummary(BaseModel):
 
 
 class SummaryInfo(BaseModel):
-    video_id: str
-    video_title: str
     channel_id: str
     channel_name: str
+    video_id: VideoID
+    video_title: str
     date: datetime
+    duration: str
     from_generated: bool
 
 
@@ -89,7 +93,7 @@ class UserSummary(BaseModel):
 
 
 class UserSummaryList(RootModelList):
-    root: List[UserSummary]
+    root: list[UserSummary]
 
 
 class Summary(BaseModel):
