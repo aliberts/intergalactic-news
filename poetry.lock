@@ -586,6 +586,23 @@ files = [
 ]
 
 [[package]]
+name = "mailchimp-marketing"
+version = "3.0.80"
+description = "Mailchimp Marketing API"
+optional = false
+python-versions = "*"
+files = [
+    {file = "mailchimp_marketing-3.0.80-py3-none-any.whl", hash = "sha256:a5bcb3ebd3be60908c65af765f8195724e6fd2d61ecf6da667a794c5bc7b84d3"},
+]
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+python-dateutil = ">=2.1"
+requests = ">=2.23"
+six = ">=1.10"
+urllib3 = ">=1.23"
+
+[[package]]
 name = "multidict"
 version = "6.0.4"
 description = "multidict implementation"
@@ -1482,4 +1499,4 @@ requests = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "824010ce37e5e2a0b60f775b0fa284dc253a29405771aeb8e35ce2e733fbbfde"
+content-hash = "aed14897d78959cd1f18447725845e2e18974339ce4c87080e72634cb8f8bdfd"
