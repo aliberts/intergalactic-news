@@ -5,11 +5,17 @@
 # Secrets
 .env
 
+# Dev
+dev.py
+
 # Data
 data/*.json
 data/transcripts/*.json
 data/summaries/*.json
 data/prompts/
+
+# Ruff
+.ruff_cache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
