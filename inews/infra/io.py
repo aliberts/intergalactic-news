@@ -87,7 +87,7 @@ def read_channels_state() -> ChannelList:
 
 
 def write_transcript(transcript: Transcript) -> None:
-    file_name = f"{transcript.video_id}.json"
+    file_name = f"""{transcript.date.strftime("%Y-%m-%d")}.{transcript.video_id}.json"""
     file_path = TRANSCRIPTS_LOCAL_PATH / file_name
     with open(file_path, "w") as file:
         json.dump(transcript.model_dump(mode="json"), file, indent=4)
@@ -99,16 +99,16 @@ def write_transcripts(transcripts_list: TranscriptList) -> None:
 
 
 def read_transcript(video_id: VideoID) -> Transcript:
-    transcript_file_path = TRANSCRIPTS_LOCAL_PATH / f"{video_id}.json"
-    with open(transcript_file_path) as file:
-        json_data = json.load(file)
-    return Transcript.model_validate(json_data)
+    for file_path in TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"):
+        with open(file_path) as file:
+            json_data = json.load(file)
+        return Transcript.model_validate(json_data)
 
 
 def read_transcripts(channels_list: ChannelList) -> TranscriptList:
     transcripts_list = []
     for channel in channels_list:
-        for video in channel.recent_videos:
+        for video in channel.last_week_videos:
             transcripts_list.append(read_transcript(video.id))
     return TranscriptList.model_validate(transcripts_list)
 
@@ -121,20 +121,19 @@ def read_all_transcripts() -> TranscriptList:
 
 
 def is_new(video_id: VideoID) -> bool:
-    existing_videos_id = [file.stem for file in TRANSCRIPTS_LOCAL_PATH.rglob("*.json")]
-    return video_id not in existing_videos_id
+    candidates = list(TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"))
+    return len(candidates) == 0
 
 
 def read_summary(video_id: VideoID) -> Summary:
-    file_name = f"{video_id}.json"
-    file_path = SUMMARIES_LOCAL_PATH / file_name
-    with open(file_path) as file:
-        json_data = json.load(file)
-    return Summary.model_validate(json_data)
+    for file_path in SUMMARIES_LOCAL_PATH.rglob(f"*.{video_id}.json"):
+        with open(file_path) as file:
+            json_data = json.load(file)
+        return Summary.model_validate(json_data)
 
 
 def write_summary(summary: Summary) -> None:
-    file_name = f"{summary.infos.video_id}.json"
+    file_name = f"""{summary.infos.date.strftime("%Y-%m-%d")}.{summary.infos.video_id}.json"""
     file_path = SUMMARIES_LOCAL_PATH / file_name
     with open(file_path, "w") as file:
         json.dump(summary.model_dump(mode="json"), file, indent=4)

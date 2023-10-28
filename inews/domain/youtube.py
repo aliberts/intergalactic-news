@@ -22,15 +22,14 @@ def get_channels_info(channels_id: list) -> ChannelList:
                     "id": channel["id"],
                     "uploads_playlist_id": channel["contentDetails"]["relatedPlaylists"]["uploads"],
                     "name": channel["snippet"]["title"],
-                    "recent_videos": [],
+                    "last_week_videos": [],
                 }
             )
         )
     return ChannelList.model_validate(channels)
 
 
-def get_channel_recent_videos_id(channel: Channel, number_of_videos: int = 3) -> list[VideoID]:
-    max_results = 5 * number_of_videos
+def get_channel_recent_videos_id(channel: Channel, max_results: int = 50) -> list[VideoID]:
     request = youtube_api.playlistItems().list(
         part="snippet", maxResults=max_results, playlistId=channel.uploads_playlist_id
     )
@@ -72,7 +71,7 @@ def get_available_transcript(video_id: VideoID):
 def get_transcripts(channels_list: ChannelList) -> TranscriptList:
     transcripts = []
     for channel in channels_list:
-        for video in channel.recent_videos:
+        for video in channel.last_week_videos:
             if io.is_new(video.id):
                 available_transcript = get_available_transcript(video.id)
                 if available_transcript is not None:

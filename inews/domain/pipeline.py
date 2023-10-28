@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pendulum
 
 from inews.domain import openai, youtube
@@ -14,19 +16,22 @@ def build_channels() -> ChannelList:
     return channels
 
 
-def filter_short_videos(videos: list[Video]) -> list[Video]:
-    filtered_videos = []
-    for video in videos:
-        if pendulum.parse(video.duration).minutes >= MIN_VIDEO_DURATION:
-            filtered_videos.append(video)
-    return filtered_videos
+def is_not_short(video: Video) -> bool:
+    return pendulum.parse(video.duration).minutes >= MIN_VIDEO_DURATION
 
 
-def filter_transcript_unavailable(videos: list[Video]) -> list[Video]:
+def transcript_available(video: Video) -> bool:
+    return youtube.get_available_transcript(video.id) is not None
+
+
+def is_less_than_a_week_old(video: Video) -> bool:
+    return (datetime.now(timezone.utc) - video.date).days < 7
+
+
+def keep_valid_videos(videos: list[Video]) -> list[Video]:
     filtered_videos = []
     for video in videos:
-        available_transcript = youtube.get_available_transcript(video.id)
-        if available_transcript is not None:
+        if is_not_short(video) and transcript_available(video) and is_less_than_a_week_old(video):
             filtered_videos.append(video)
     return filtered_videos
 
@@ -35,9 +40,7 @@ def build_transcripts(channels: ChannelList) -> TranscriptList:
     for channel in channels:
         videos_id = youtube.get_channel_recent_videos_id(channel)
         videos = youtube.get_videos_info(videos_id)
-        videos = filter_short_videos(videos)
-        videos = filter_transcript_unavailable(videos)
-        channel.recent_videos = videos[:3]
+        channel.last_week_videos = keep_valid_videos(videos)
     io.write_channels_state(channels)
 
     transcripts = youtube.get_transcripts(channels)

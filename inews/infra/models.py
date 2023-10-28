@@ -60,7 +60,7 @@ class Channel(BaseModel):
     id: str
     name: str
     uploads_playlist_id: str
-    recent_videos: list[Video] = Field(default_factory=lambda: [])
+    last_week_videos: list[Video] = Field(default_factory=lambda: [])
 
 
 class ChannelList(RootModelList):
