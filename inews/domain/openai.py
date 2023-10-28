@@ -1,8 +1,9 @@
 from inews.domain import preprocessing, prompts
 from inews.infra import apis
-from inews.infra.models import BaseSummary, Summary, SummaryInfo, Transcript, User, UserSummary
+from inews.infra.models import BaseSummary, Summary, SummaryInfo, Transcript, UserBase, UserSummary
 
 openai_api = apis.get_openai()
+
 WINDOW_THRESHOLD = 3500
 TEMPERATURE = 0.4
 
@@ -15,9 +16,8 @@ def generate_base_prompt(transcript: Transcript) -> str:
     )
 
 
-def generate_user_prompt(summary: Summary, user: User) -> str:
+def generate_user_prompt(summary: Summary, user: UserBase) -> str:
     return prompts.USER_SUMMARY.format(
-        user_age=prompts.AGE_CAT_TO_PROMPT[user.age_cat],
         user_science_cat=prompts.SCIENCE_CAT_TO_PROMPT[user.science_cat],
         video_title=summary.infos.video_title,
         channel_name=summary.infos.channel_name,
@@ -44,7 +44,7 @@ def get_base_summary(transcript: Transcript) -> BaseSummary:
     return BaseSummary(tokens_count=tokens_count, summary=base_summary)
 
 
-def get_user_summary(summary: Summary, user: User) -> UserSummary:
+def get_user_summary(summary: Summary, user: UserBase) -> UserSummary:
     prompt = generate_user_prompt(summary, user)
     user_summary = get_model_response(prompt)
     return UserSummary(user=user, summary=user_summary)

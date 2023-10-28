@@ -2,7 +2,7 @@ import pendulum
 
 from inews.domain import openai, youtube
 from inews.infra import io
-from inews.infra.models import BaseSummary, ChannelList, Summary, TranscriptList, User, Video
+from inews.infra.models import BaseSummary, ChannelList, Summary, TranscriptList, UserBase, Video
 
 MIN_VIDEO_DURATION = 2  # minimum video length in minutes
 
@@ -46,7 +46,7 @@ def build_transcripts(channels: ChannelList) -> TranscriptList:
 
 
 def build_summaries(transcripts_list: TranscriptList) -> dict[str:BaseSummary]:
-    users = [User(age_cat=2, science_cat=0), User(age_cat=0, science_cat=2)]
+    users = [UserBase(science_cat=0), UserBase(science_cat=2)]
     for transcript in transcripts_list:
         summary_info = openai.get_summary_info(transcript)
         base_summary = openai.get_base_summary(transcript)

@@ -67,8 +67,13 @@ class ChannelList(RootModelList):
     root: list[Channel]
 
 
-class User(BaseModel):
-    age_cat: Literal[0, 1, 2]
+class UserBase(BaseModel):
+    science_cat: Literal[0, 1, 2]
+
+
+class User(UserBase):
+    name: str
+    email: str
     science_cat: Literal[0, 1, 2]
 
 
@@ -88,7 +93,7 @@ class SummaryInfo(BaseModel):
 
 
 class UserSummary(BaseModel):
-    user: User
+    user: UserBase
     summary: str
 
 

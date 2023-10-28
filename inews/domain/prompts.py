@@ -1,9 +1,3 @@
-AGE_CAT_TO_PROMPT = [
-    "a 6 years-old child",
-    "a 14 years-old teenager",
-    "an adult",
-]
-
 SCIENCE_CAT_TO_PROMPT = [
     "a beginner",
     "an average",
@@ -32,7 +26,7 @@ talks mainly about astronomy and astrophysics and relevant news in these fields.
 The title of the video is "{video_title}".
 
 Adapt this to a short summary (3-4 paragraphs) of this transcript, intended to
-be read and understood by {user_age} with {user_science_cat}-level scientific
+be read and understood by someone with {user_science_cat}-level scientific
 background. The language should be neutral and tailored for this specific
 audience. At the end, explain why the topic of the video is relevant to someone
 having an interest in astrophysics, astronomy or astronautics.
