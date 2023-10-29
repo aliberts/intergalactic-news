@@ -40,6 +40,7 @@ class Transcript(BaseModel):
     video_title: str
     date: datetime
     duration: str
+    thumbnail_url: str
     is_generated: bool
     tokens_count: int
     transcript: str
@@ -54,6 +55,7 @@ class Video(BaseModel):
     title: str
     date: datetime
     duration: str
+    thumbnail_url: str
 
 
 class Channel(BaseModel):
@@ -88,6 +90,7 @@ class SummaryInfo(BaseModel):
     video_id: VideoID
     video_title: str
     date: datetime
+    thumbnail_url: str
     duration: str
     from_generated: bool
 

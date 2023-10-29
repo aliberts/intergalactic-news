@@ -59,6 +59,7 @@ def get_summary_info(transcript: Transcript) -> SummaryInfo:
             "video_title": transcript.video_title,
             "date": transcript.date,
             "duration": transcript.duration,
+            "thumbnail_url": transcript.thumbnail_url,
             "from_generated": transcript.is_generated,
         }
     )

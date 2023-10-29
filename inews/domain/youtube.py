@@ -55,6 +55,7 @@ def get_videos_info(videos_id: list[VideoID]) -> list[Video]:
                     "title": unidecode(item["snippet"]["title"]),
                     "date": item["snippet"]["publishedAt"],
                     "duration": item["contentDetails"]["duration"],
+                    "thumbnail_url": item["snippet"]["thumbnails"]["medium"]["url"],
                 }
             )
         )
@@ -89,6 +90,7 @@ def get_transcripts(channels_list: ChannelList) -> TranscriptList:
                             "video_title": video.title,
                             "date": video.date,
                             "duration": video.duration,
+                            "thumbnail_url": video.thumbnail_url,
                             "is_generated": available_transcript.is_generated,
                             "tokens_count": tokens_count,
                             "transcript": transcript,
