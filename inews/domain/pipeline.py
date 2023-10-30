@@ -1,6 +1,6 @@
 from inews.domain import mailing
+from inews.domain.models import USER_GROUPS, ChannelList, Newsletter, Summary, TranscriptList
 from inews.infra import io
-from inews.infra.models import USER_GROUPS, ChannelList, Newsletter, Summary, TranscriptList
 
 
 def build_channels(initialize: bool = True) -> ChannelList:

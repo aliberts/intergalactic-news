@@ -2,8 +2,8 @@ from pprint import pprint
 
 from mailchimp_marketing.api_client import ApiClientError
 
+from inews.domain.models import Summary, UserGroup
 from inews.infra import apis, io
-from inews.infra.models import Summary, UserGroup
 
 mailchimp_api, members_list_id, campaign_id = apis.get_mailchimp()
 
