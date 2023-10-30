@@ -46,15 +46,16 @@ def get_base_summary(video_title: str, channel_name: str, transcript: str) -> st
 
 
 def get_short_summary(video_title: str, channel_name: str, base_summary: str) -> str:
-    return ""
+    return "This is a short summary"
 
 
 def get_title(video_title: str, channel_name: str, base_summary: str) -> str:
-    return ""
+    return "This is a title"
 
 
 def get_user_summary(
     video_title: str, channel_name: str, base_summary: str, user_group: UserGroup
 ) -> str:
+    return f"This is a summary for user group {user_group}"
     prompt = generate_user_prompt(video_title, channel_name, base_summary, user_group)
     return get_model_response(prompt)

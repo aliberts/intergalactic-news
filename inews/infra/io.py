@@ -16,8 +16,8 @@ CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
 SUMMARIES_LOCAL_PATH = Path("data/summaries/")
-HTML_TEMPLATE_PATH = Path("data/html_templates/")
-HTML_PATH = Path("data/html/")
+HTML_TEMPLATE_PATH = Path("data/html/templates/")
+HTML_BUILD_PATH = Path("data/html/build/")
 
 
 def clear_bucket() -> None:
@@ -89,6 +89,6 @@ def read_html_template(template_name: str) -> str:
 
 
 def write_html(html: str, file_name: str) -> None:
-    file_path = HTML_PATH / f"{file_name}.html"
+    file_path = HTML_BUILD_PATH / f"{file_name}.html"
     with open(file_path, "w") as file:
         html = file.write(html)

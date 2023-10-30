@@ -307,3 +307,12 @@ class Summary(BaseModel):
         file_path = io.SUMMARIES_LOCAL_PATH / file_name
         with open(file_path, "w") as file:
             json.dump(self.model_dump(mode="json"), file, indent=4)
+
+
+class Newsletter(BaseModel):
+    user_group: UserGroup
+    html: str
+
+    @classmethod
+    def init_from_summaries(cls, user_group: UserGroup, summaries: list[Summary]):
+        ...

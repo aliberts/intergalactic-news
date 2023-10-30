@@ -1,5 +1,6 @@
+from inews.domain import mailing
 from inews.infra import io
-from inews.infra.models import ChannelList, Summary, TranscriptList
+from inews.infra.models import USER_GROUPS, ChannelList, Newsletter, Summary, TranscriptList
 
 
 def build_channels(initialize: bool = True) -> ChannelList:
@@ -25,11 +26,20 @@ def build_transcripts(channels: ChannelList, initialize: bool = True) -> Transcr
     return transcripts
 
 
-def build_summaries(transcripts: TranscriptList) -> list[Summary]:
+def build_summaries(transcripts: TranscriptList, initialize: bool = True) -> list[Summary]:
     summaries = []
     for transcript in transcripts:
-        summary = Summary.init_from_transcript(transcript)
-        summary.save()
-        summaries.append(summary)
+        if initialize:
+            summary = Summary.init_from_transcript(transcript)
+            summary.save()
+            summaries.append(summary)
+        else:
+            summary = Summary.init_from_file(transcript.video_id)
+            summaries.append(summary)
 
     return summaries
+
+
+def build_newsletters(summaries: list[Summary]) -> list[Newsletter]:
+    for group_id in USER_GROUPS:
+        mailing.create_newsletter(group_id, summaries)
