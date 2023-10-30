@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, RootModel, computed_field
 from unidecode import unidecode
 from youtube_transcript_api._transcripts import Transcript as YtTranscript
 
-from inews.domain import openai, preprocessing, youtube
+from inews.domain import llm, preprocessing, youtube
 from inews.infra import io
 from inews.infra.types import UserGroup, VideoID
 
@@ -275,7 +275,7 @@ class Summary(BaseModel):
     @classmethod
     def init_from_transcript(cls, transcript: Transcript):
         infos = SummaryInfo.init_from_transcript(transcript)
-        base_summary = openai.get_base_summary(
+        base_summary = llm.get_base_summary(
             transcript.video_title, transcript.channel_name, transcript.transcript
         )
         return cls(infos=infos, base=base_summary)
@@ -283,19 +283,19 @@ class Summary(BaseModel):
     @computed_field
     @cached_property
     def short(self) -> str:
-        return openai.get_short_summary(self.infos.video_title, self.infos.channel_name, self.base)
+        return llm.get_short_summary(self.infos.video_title, self.infos.channel_name, self.base)
 
     @computed_field
     @cached_property
     def title(self) -> str:
-        return openai.get_title(self.infos.video_title, self.infos.channel_name, self.base)
+        return llm.get_title(self.infos.video_title, self.infos.channel_name, self.base)
 
     @computed_field
     @cached_property
     def user_groups(self) -> UserSummaryList:
         user_summaries = []
         for group_id in USER_GROUPS:
-            user_summary = openai.get_user_summary(
+            user_summary = llm.get_user_summary(
                 self.infos.video_title, self.infos.channel_name, self.base, group_id
             )
             user_summaries.append(UserSummary(user_group=group_id, summary=user_summary))
