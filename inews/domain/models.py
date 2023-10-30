@@ -288,7 +288,7 @@ class Summary(BaseModel):
     @computed_field
     @cached_property
     def title(self) -> str:
-        return llm.get_title(self.infos.video_title, self.infos.channel_name, self.base)
+        return llm.get_title_summary(self.infos.video_title, self.infos.channel_name, self.base)
 
     @computed_field
     @cached_property

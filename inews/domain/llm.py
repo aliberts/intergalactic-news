@@ -8,7 +8,7 @@ WINDOW_THRESHOLD = 3500
 TEMPERATURE = 0.4
 
 
-def generate_base_prompt(video_title: str, channel_name: str, transcript: str) -> str:
+def generate_base_summary_prompt(video_title: str, channel_name: str, transcript: str) -> str:
     return prompts.BASE_SUMMARY.format(
         video_title=video_title,
         channel_name=channel_name,
@@ -16,7 +16,23 @@ def generate_base_prompt(video_title: str, channel_name: str, transcript: str) -
     )
 
 
-def generate_user_prompt(
+def generate_title_summary_prompt(video_title: str, channel_name: str, base_summary: str) -> str:
+    return prompts.TITLE_SUMMARY.format(
+        video_title=video_title,
+        channel_name=channel_name,
+        summary=base_summary,
+    )
+
+
+def generate_short_summary_prompt(video_title: str, channel_name: str, base_summary: str) -> str:
+    return prompts.SHORT_SUMMARY.format(
+        video_title=video_title,
+        channel_name=channel_name,
+        summary=base_summary,
+    )
+
+
+def generate_user_summary_prompt(
     video_title: str, channel_name: str, base_summary: str, user_group: UserGroup
 ) -> str:
     return prompts.USER_SUMMARY.format(
@@ -27,8 +43,16 @@ def generate_user_prompt(
     )
 
 
+def generate_stories_selection_prompt(*args, **kwargs) -> str:
+    ...
+
+
+def generate_newsletter_summary_prompt(*args, **kwargs) -> str:
+    ...
+
+
 def get_model_response(prompt: str) -> str:
-    return ""
+    return "This is a model response"
     return prompts.BASE_SUMMARY_EXAMPLE
     tokens_count = preprocessing.count_tokens(prompt)
     model = "gpt-3.5-turbo-16k" if tokens_count > WINDOW_THRESHOLD else "gpt-3.5-turbo"
@@ -41,21 +65,37 @@ def get_model_response(prompt: str) -> str:
 
 
 def get_base_summary(video_title: str, channel_name: str, transcript: str) -> str:
-    prompt = generate_base_prompt(video_title, channel_name, transcript)
+    return "This is a base summary"
+    prompt = generate_base_summary_prompt(video_title, channel_name, transcript)
     return get_model_response(prompt)
 
 
 def get_short_summary(video_title: str, channel_name: str, base_summary: str) -> str:
     return "This is a short summary"
+    prompt = generate_short_summary_prompt(video_title, channel_name, base_summary)
+    return get_model_response(prompt)
 
 
-def get_title(video_title: str, channel_name: str, base_summary: str) -> str:
+def get_title_summary(video_title: str, channel_name: str, base_summary: str) -> str:
     return "This is a title"
+    prompt = generate_title_summary_prompt(video_title, channel_name, base_summary)
+    return get_model_response(prompt)
 
 
 def get_user_summary(
     video_title: str, channel_name: str, base_summary: str, user_group: UserGroup
 ) -> str:
-    return f"This is a summary for user group {user_group}"
-    prompt = generate_user_prompt(video_title, channel_name, base_summary, user_group)
+    return (
+        f"This is a summary for a user with {prompts.SCIENCE_GROUP_TO_PROMPT[user_group]}"
+        + "-level scientific background"
+    )
+    prompt = generate_user_summary_prompt(video_title, channel_name, base_summary, user_group)
     return get_model_response(prompt)
+
+
+def get_stories_selection(*args, **kwargs) -> str:
+    ...
+
+
+def get_newsletter_summary(*args, **kwargs) -> str:
+    ...
