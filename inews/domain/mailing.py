@@ -40,7 +40,7 @@ def build_story_block(user_group: UserGroup, summary: Summary, aligned: str = "l
         newsletter_summary_block.replace("[INEWS:VIDEO_ID]", summary.infos.video_id)
         .replace("[INEWS:VIDEO_TITLE]", summary.infos.video_title)
         .replace("[INEWS:VIDEO_THUMBNAIL_URL]", summary.infos.thumbnail_url)
-        .replace("[INEWS:SUMMARY_TITLE]", summary.title)
+        .replace("[INEWS:TITLE_SUMMARY]", summary.title)
         .replace("[INEWS:SHORT_SUMMARY]", summary.short)
     )
     story_block += user_summary_block.replace(
