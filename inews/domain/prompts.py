@@ -1,4 +1,4 @@
-SCIENCE_CAT_TO_PROMPT = [
+SCIENCE_GROUP_TO_PROMPT = [
     "a beginner",
     "an average",
     "an expert",
@@ -16,7 +16,8 @@ main ideas and essential information, eliminating extraneous language and
 focusing on critical aspects. Rely strictly on the provided text, without
 including external information.
 
-Transcript: {transcript}"""
+Transcript:
+{transcript}"""
 
 
 USER_SUMMARY = """The following is a summarized transcript
@@ -31,7 +32,47 @@ background. The language should be neutral and tailored for this specific
 audience. At the end, explain why the topic of the video is relevant to someone
 having an interest in astrophysics, astronomy or astronautics.
 
-Summarized transcript: {summary}"""
+Summarized transcript:
+{summary}"""
+
+
+SHORT_SUMMARY = """The following is a summarized transcript
+of a youtube video by youtube channel {channel_name}. This is a channel that
+talks mainly about astronomy and astrophysics and relevant news in these fields.
+
+The title of the video is "{video_title}".
+
+Write a very short summary of this transcript. The lenght of your summary should
+not exceed 3 sentences. The language should be neutral.
+
+Summarized transcript:
+{summary}"""
+
+
+SUMMARY_TITLE = """The following is a summarized transcript
+of a youtube video by youtube channel {channel_name}. This is a channel that
+talks mainly about astronomy and astrophysics and relevant news in these fields.
+
+The title of the video is "{video_title}".
+
+Write a very short summary of this transcript. The lenght of your summary should
+not exceed 3 sentences. The language should be neutral.
+
+Summarized transcript:
+{summary}"""
+
+
+SELECT_MOST_RELEVANT = """You are helping to generate content for a newsletter.
+Your will be given a list of youtube videos titles.
+
+Pick {number_of_videos} of them based on the following criterias:
+Relevency
+
+You will give you answer
+
+List of titles:
+{titles}
+"""
 
 
 BASE_SUMMARY_EXAMPLE = """The Gaia Space Telescope, known for its detailed

@@ -1,6 +1,6 @@
 from inews.domain import preprocessing, prompts
 from inews.infra import apis
-from inews.infra.models import BaseSummary, Summary, SummaryInfo, Transcript, UserBase, UserSummary
+from inews.infra.types import UserGroup
 
 openai_api = apis.get_openai()
 
@@ -8,24 +8,27 @@ WINDOW_THRESHOLD = 3500
 TEMPERATURE = 0.4
 
 
-def generate_base_prompt(transcript: Transcript) -> str:
+def generate_base_prompt(video_title: str, channel_name: str, transcript: str) -> str:
     return prompts.BASE_SUMMARY.format(
-        video_title=transcript.video_title,
-        channel_name=transcript.channel_name,
-        transcript=transcript.transcript,
+        video_title=video_title,
+        channel_name=channel_name,
+        transcript=transcript,
     )
 
 
-def generate_user_prompt(summary: Summary, user: UserBase) -> str:
+def generate_user_prompt(
+    video_title: str, channel_name: str, base_summary: str, user_group: UserGroup
+) -> str:
     return prompts.USER_SUMMARY.format(
-        user_science_cat=prompts.SCIENCE_CAT_TO_PROMPT[user.science_cat],
-        video_title=summary.infos.video_title,
-        channel_name=summary.infos.channel_name,
-        summary=summary.base_summary.summary,
+        user_science_cat=prompts.SCIENCE_GROUP_TO_PROMPT[user_group],
+        video_title=video_title,
+        channel_name=channel_name,
+        summary=base_summary,
     )
 
 
 def get_model_response(prompt: str) -> str:
+    return ""
     return prompts.BASE_SUMMARY_EXAMPLE
     tokens_count = preprocessing.count_tokens(prompt)
     model = "gpt-3.5-turbo-16k" if tokens_count > WINDOW_THRESHOLD else "gpt-3.5-turbo"
@@ -37,29 +40,21 @@ def get_model_response(prompt: str) -> str:
     return completion.choices[0].message.content
 
 
-def get_base_summary(transcript: Transcript) -> BaseSummary:
-    prompt = generate_base_prompt(transcript)
-    base_summary = get_model_response(prompt)
-    tokens_count = preprocessing.count_tokens(base_summary)
-    return BaseSummary(tokens_count=tokens_count, summary=base_summary)
+def get_base_summary(video_title: str, channel_name: str, transcript: str) -> str:
+    prompt = generate_base_prompt(video_title, channel_name, transcript)
+    return get_model_response(prompt)
 
 
-def get_user_summary(summary: Summary, user: UserBase) -> UserSummary:
-    prompt = generate_user_prompt(summary, user)
-    user_summary = get_model_response(prompt)
-    return UserSummary(user=user, summary=user_summary)
+def get_short_summary(video_title: str, channel_name: str, base_summary: str) -> str:
+    return ""
 
 
-def get_summary_info(transcript: Transcript) -> SummaryInfo:
-    return SummaryInfo(
-        **{
-            "channel_id": transcript.channel_id,
-            "channel_name": transcript.channel_name,
-            "video_id": transcript.video_id,
-            "video_title": transcript.video_title,
-            "date": transcript.date,
-            "duration": transcript.duration,
-            "thumbnail_url": transcript.thumbnail_url,
-            "from_generated": transcript.is_generated,
-        }
-    )
+def get_title(video_title: str, channel_name: str, base_summary: str) -> str:
+    return ""
+
+
+def get_user_summary(
+    video_title: str, channel_name: str, base_summary: str, user_group: UserGroup
+) -> str:
+    prompt = generate_user_prompt(video_title, channel_name, base_summary, user_group)
+    return get_model_response(prompt)

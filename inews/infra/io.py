@@ -1,10 +1,9 @@
-import json
 from pathlib import Path
 
 import boto3
 import yaml
 
-from inews.infra.models import ChannelList, Summary, Transcript, TranscriptList, VideoID
+from inews.infra.types import VideoID
 
 s3 = boto3.resource("s3")
 
@@ -17,6 +16,8 @@ CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
 SUMMARIES_LOCAL_PATH = Path("data/summaries/")
+HTML_TEMPLATE_PATH = Path("data/html_templates/")
+HTML_PATH = Path("data/html/")
 
 
 def clear_bucket() -> None:
@@ -75,65 +76,19 @@ def get_channels_id() -> list:
     return channels_id
 
 
-def write_channels_state(channels_list: ChannelList) -> None:
-    with open(CHANNELS_LOCAL_FILE, "w") as file:
-        json.dump(channels_list.model_dump(mode="json"), file, indent=4)
-
-
-def read_channels_state() -> ChannelList:
-    with open(CHANNELS_LOCAL_FILE) as file:
-        json_data = json.load(file)
-    return ChannelList.model_validate(json_data)
-
-
-def write_transcript(transcript: Transcript) -> None:
-    file_name = f"""{transcript.date.strftime("%Y-%m-%d")}.{transcript.video_id}.json"""
-    file_path = TRANSCRIPTS_LOCAL_PATH / file_name
-    with open(file_path, "w") as file:
-        json.dump(transcript.model_dump(mode="json"), file, indent=4)
-
-
-def write_transcripts(transcripts_list: TranscriptList) -> None:
-    for transcript in transcripts_list:
-        write_transcript(transcript)
-
-
-def read_transcript(video_id: VideoID) -> Transcript:
-    for file_path in TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"):
-        with open(file_path) as file:
-            json_data = json.load(file)
-        return Transcript.model_validate(json_data)
-
-
-def read_transcripts(channels_list: ChannelList) -> TranscriptList:
-    transcripts_list = []
-    for channel in channels_list:
-        for video in channel.last_week_videos:
-            transcripts_list.append(read_transcript(video.id))
-    return TranscriptList.model_validate(transcripts_list)
-
-
-def read_all_transcripts() -> TranscriptList:
-    transcripts_list = []
-    for transcript_file_path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
-        transcripts_list.append(read_transcript(transcript_file_path.stem))
-    return TranscriptList.model_validate(transcripts_list)
-
-
 def is_new(video_id: VideoID) -> bool:
     candidates = list(TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"))
     return len(candidates) == 0
 
 
-def read_summary(video_id: VideoID) -> Summary:
-    for file_path in SUMMARIES_LOCAL_PATH.rglob(f"*.{video_id}.json"):
-        with open(file_path) as file:
-            json_data = json.load(file)
-        return Summary.model_validate(json_data)
+def read_html_template(template_name: str) -> str:
+    file_path = HTML_TEMPLATE_PATH / f"{template_name}.html"
+    with open(file_path) as file:
+        html = file.read()
+    return html
 
 
-def write_summary(summary: Summary) -> None:
-    file_name = f"""{summary.infos.date.strftime("%Y-%m-%d")}.{summary.infos.video_id}.json"""
-    file_path = SUMMARIES_LOCAL_PATH / file_name
+def write_html(html: str, file_name: str) -> None:
+    file_path = HTML_PATH / f"{file_name}.html"
     with open(file_path, "w") as file:
-        json.dump(summary.model_dump(mode="json"), file, indent=4)
+        html = file.write(html)
