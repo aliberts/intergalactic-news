@@ -4,9 +4,9 @@ from functools import cached_property
 from typing import Any
 
 import pendulum
-from pydantic import BaseModel, Field, RootModel, computed_field
+from pydantic import BaseModel, Field, RootModel
 from unidecode import unidecode
-from youtube_transcript_api._transcripts import Transcript as YtTranscript
+from youtube_transcript_api._transcripts import Transcript
 
 from inews.domain import llm, preprocessing, youtube
 from inews.infra import io
@@ -41,7 +41,7 @@ class RootModelList(RootModel):
         self.root.pop(key)
 
 
-class Video(BaseModel):
+class VideoInfos(BaseModel):
     id: VideoID
     title: str
     date: datetime
@@ -49,14 +49,14 @@ class Video(BaseModel):
     thumbnail_url: str
 
     @classmethod
-    def init_from_info(cls, video_info: dict):
+    def init_from_api_response(cls, api_response: dict):
         return cls(
             **{
-                "id": video_info["id"],
-                "title": unidecode(video_info["snippet"]["title"]),
-                "date": video_info["snippet"]["publishedAt"],
-                "duration": video_info["contentDetails"]["duration"],
-                "thumbnail_url": video_info["snippet"]["thumbnails"]["medium"]["url"],
+                "id": api_response["id"],
+                "title": unidecode(api_response["snippet"]["title"]),
+                "date": api_response["snippet"]["publishedAt"],
+                "duration": api_response["contentDetails"]["duration"],
+                "thumbnail_url": api_response["snippet"]["thumbnails"]["medium"]["url"],
             }
         )
 
@@ -65,29 +65,23 @@ class Video(BaseModel):
         return pendulum.parse(self.duration).minutes >= MIN_VIDEO_DURATION
 
     @cached_property
-    def available_transcript(self) -> YtTranscript | None:
-        return youtube.get_available_transcript(self.id)
-
-    @cached_property
     def is_from_this_week(self) -> bool:
         return (datetime.now(timezone.utc) - self.date).days < 7
 
-    @cached_property
+    @property
     def is_valid(self) -> bool:
-        return (
-            self.is_not_short and self.is_from_this_week and (self.available_transcript is not None)
-        )
+        return self.is_not_short and self.is_from_this_week
 
 
-class VideoList(RootModelList):
-    root: list[Video]
+class VideoInfosList(RootModelList):
+    root: list[VideoInfos]
 
     @classmethod
     def init_from_ids(cls, videos_id: list[VideoID]):
-        videos_info = youtube.get_videos_info(videos_id)
+        api_response = youtube.get_videos_infos(videos_id)
         videos = []
-        for video_info in videos_info["items"]:
-            videos.append(Video.init_from_info(video_info))
+        for item in api_response["items"]:
+            videos.append(VideoInfos.init_from_api_response(item))
 
         return cls.model_validate(videos)
 
@@ -95,43 +89,57 @@ class VideoList(RootModelList):
         self.root = [video for video in self.root if video.is_valid]
 
 
-class Channel(BaseModel):
+class ChannelInfos(BaseModel):
     id: str
     name: str
     uploads_playlist_id: str
-    last_week_videos: VideoList = Field(default_factory=lambda: [])
 
     @classmethod
-    def init_from_info(cls, channel_info: dict):
+    def init_from_api_response(cls, api_response: dict):
         return cls(
             **{
-                "id": channel_info["id"],
-                "uploads_playlist_id": channel_info["contentDetails"]["relatedPlaylists"][
+                "id": api_response["id"],
+                "name": api_response["snippet"]["title"],
+                "uploads_playlist_id": api_response["contentDetails"]["relatedPlaylists"][
                     "uploads"
                 ],
-                "name": channel_info["snippet"]["title"],
-                "last_week_videos": [],
             }
         )
 
-    def get_recent_videos_id(self) -> list[VideoID]:
-        uploads_info = youtube.get_channel_recent_videos_id(self.uploads_playlist_id)
+
+class Channel(BaseModel):
+    infos: ChannelInfos
+    last_week_videos: VideoInfosList = Field(default_factory=lambda: [])
+
+    @classmethod
+    def init_from_api_response(cls, api_response: dict):
+        infos = ChannelInfos.init_from_api_response(api_response)
+        return cls(infos=infos)
+
+    def get_recent_videos_id_from_api(self) -> list[VideoID]:
+        uploads_info = youtube.get_channel_recent_videos_id(self.infos.uploads_playlist_id)
         videos_id = []
         for item in uploads_info["items"]:
             videos_id.append(item["snippet"]["resourceId"]["videoId"])
 
         return videos_id
 
+    def update_last_week_videos(self) -> None:
+        videos_id = self.get_recent_videos_id_from_api()
+        videos = VideoInfosList.init_from_ids(videos_id)
+        videos.drop_invalids()
+        self.last_week_videos = videos
+
 
 class ChannelList(RootModelList):
     root: list[Channel]
 
     @classmethod
-    def init_from_ids(cls, channels_id: list[str]):
-        channels_info = youtube.get_channels_info(channels_id)
+    def init_from_api_with_ids(cls, channels_id: list[str]):
+        api_response = youtube.get_channels_info(channels_id)
         channels = []
-        for channel_info in channels_info["items"]:
-            channels.append(Channel.init_from_info(channel_info))
+        for item in api_response["items"]:
+            channels.append(Channel.init_from_api_response(item))
         return cls.model_validate(channels)
 
     @classmethod
@@ -142,27 +150,30 @@ class ChannelList(RootModelList):
 
     def update_last_week_videos(self) -> None:
         for channel in self.root:
-            videos_id = channel.get_recent_videos_id()
-            videos = VideoList.init_from_ids(videos_id)
-            videos.drop_invalids()
-            channel.last_week_videos = videos
+            channel.update_last_week_videos()
 
     def save(self) -> None:
         with open(io.CHANNELS_LOCAL_FILE, "w") as file:
             json.dump(self.model_dump(mode="json"), file, indent=4)
 
 
-class Transcript(BaseModel):
-    channel_id: str
-    channel_name: str
-    video_id: VideoID
-    video_title: str
-    date: datetime
-    duration: str
-    thumbnail_url: str
-    is_generated: bool
+class ProcessedTranscript(BaseModel):
     tokens_count: int
-    transcript: str
+    is_generated: bool
+    text: str
+
+    @classmethod
+    def init_from_transcript(cls, transcript: Transcript):
+        raw_transcript = transcript.fetch()
+        text = preprocessing.format_transcript(raw_transcript)
+        tokens_count = preprocessing.count_tokens(text)
+        return cls(tokens_count=tokens_count, is_generated=transcript.is_generated, text=text)
+
+
+class Video(BaseModel):
+    infos: VideoInfos
+    channel_infos: ChannelInfos
+    transcript: ProcessedTranscript | None = None
 
     @classmethod
     def init_from_file(cls, video_id: VideoID):
@@ -171,59 +182,57 @@ class Transcript(BaseModel):
                 json_data = json.load(file)
             return cls.model_validate(json_data)
 
-    @classmethod
-    def init_from_channel_and_video(cls, channel: Channel, video: Video):
-        if not io.is_new(video.id):
-            return cls.init_from_file(video.id)
-
-        raw_transcript = video.available_transcript.fetch()
-        transcript = preprocessing.format_transcript(raw_transcript)
-        tokens_count = preprocessing.count_tokens(transcript)
-        return cls(
-            **{
-                "channel_id": channel.id,
-                "channel_name": channel.name,
-                "video_id": video.id,
-                "video_title": video.title,
-                "date": video.date,
-                "duration": video.duration,
-                "thumbnail_url": video.thumbnail_url,
-                "is_generated": video.available_transcript.is_generated,
-                "tokens_count": tokens_count,
-                "transcript": transcript,
-            }
-        )
+    def get_available_transcript(self) -> None:
+        available_transcript = youtube.get_available_transcript(self.infos.id)
+        if available_transcript is None:
+            self.transcript = None
+        else:
+            self.transcript = ProcessedTranscript.init_from_transcript(available_transcript)
 
     def save(self) -> None:
-        file_name = f"""{self.date.strftime("%Y-%m-%d")}.{self.video_id}.json"""
+        file_name = f"""{self.infos.date.strftime("%Y-%m-%d")}.{self.infos.id}.json"""
         file_path = io.TRANSCRIPTS_LOCAL_PATH / file_name
         with open(file_path, "w") as file:
             json.dump(self.model_dump(mode="json"), file, indent=4)
 
 
-class TranscriptList(RootModelList):
-    root: list[Transcript]
+class VideoList(RootModelList):
+    root: list[Video]
 
     @classmethod
     def init_from_channels(cls, channels: ChannelList):
-        transcripts = []
+        videos = []
         for channel in channels:
-            for video in channel.last_week_videos:
-                if video.available_transcript is not None:
-                    transcripts.append(Transcript.init_from_channel_and_video(channel, video))
-        return cls.model_validate(transcripts)
+            for video_infos in channel.last_week_videos:
+                videos.append(Video(infos=video_infos, channel_infos=channel.infos))
+        return cls.model_validate(videos)
 
     @classmethod
-    def init_from_files(cls, channels: ChannelList):
-        transcripts = []
-        for channel in channels:
-            for video in channel.last_week_videos:
-                transcripts.append(Transcript.init_from_file(video.id))
-        return cls.model_validate(transcripts)
+    def init_from_all_files(cls):
+        videos = []
+        for file_path in io.TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
+            with open(file_path) as file:
+                json_data = json.load(file)
+            videos.append(Video.model_validate(json_data))
+        return cls.model_validate(videos)
 
-    def save(self):
-        for transcript in self.root:
-            transcript.save()
+    @classmethod
+    def init_from_files_with_videos_id(cls, videos_id: list[VideoID]):
+        videos = []
+        for video_id in videos_id:
+            videos.append(Video.init_from_file(video_id))
+        return cls.model_validate(videos)
+
+    def get_available_transcripts(self) -> None:
+        for video in self.root:
+            video.get_available_transcript()
+
+    def drop_no_transcripts(self) -> None:
+        self.root = [video for video in self.root if video.transcript is not None]
+
+    def save(self) -> None:
+        for video in self.root:
+            video.save()
 
 
 class User(BaseModel):
@@ -232,29 +241,9 @@ class User(BaseModel):
     science_cat: UserGroup
 
 
-class BaseSummary(BaseModel):
-    tokens_count: int
-    summary: str
-
-
-class SummaryInfo(BaseModel):
-    channel_id: str
-    channel_name: str
-    video_id: VideoID
-    video_title: str
-    date: datetime
-    duration: str
-    thumbnail_url: str
-    is_generated: bool
-
-    @classmethod
-    def init_from_transcript(cls, transcript: Transcript):
-        return cls(**transcript.model_dump(exclude={"tokens_count", "transcript"}))
-
-
 class UserSummary(BaseModel):
     user_group: UserGroup
-    summary: str
+    summary: str = ""
 
 
 class UserSummaryList(RootModelList):
@@ -262,8 +251,12 @@ class UserSummaryList(RootModelList):
 
 
 class Summary(BaseModel):
-    infos: SummaryInfo
-    base: str
+    video_infos: VideoInfos
+    channel_infos: ChannelInfos
+    base: str = ""
+    short: str = ""
+    title: str = ""
+    user_groups: UserSummaryList = Field(default_factory=list)
 
     @classmethod
     def init_from_file(cls, video_id: VideoID):
@@ -273,40 +266,98 @@ class Summary(BaseModel):
             return cls.model_validate(json_data)
 
     @classmethod
-    def init_from_transcript(cls, transcript: Transcript):
-        infos = SummaryInfo.init_from_transcript(transcript)
-        base_summary = llm.get_base_summary(
-            transcript.video_title, transcript.channel_name, transcript.transcript
+    def init_from_video(cls, video: Video):
+        return cls(video_infos=video.infos, channel_infos=video.channel_infos)
+
+    def get_base(self, transcript: str) -> None:
+        self.base = llm.get_base_summary(
+            self.video_infos.title, self.channel_infos.name, transcript
         )
-        return cls(infos=infos, base=base_summary)
 
-    @computed_field
-    @cached_property
-    def short(self) -> str:
-        return llm.get_short_summary(self.infos.video_title, self.infos.channel_name, self.base)
+    def get_short(self) -> None:
+        self.short = llm.get_short_summary(
+            self.video_infos.title, self.channel_infos.name, self.base
+        )
 
-    @computed_field
-    @cached_property
-    def title(self) -> str:
-        return llm.get_title_summary(self.infos.video_title, self.infos.channel_name, self.base)
+    def get_title(self) -> None:
+        self.title = llm.get_title_summary(
+            self.video_infos.title, self.channel_infos.name, self.base
+        )
 
-    @computed_field
-    @cached_property
-    def user_groups(self) -> UserSummaryList:
+    def get_user_groups(self) -> None:
         user_summaries = []
         for group_id in USER_GROUPS:
             user_summary = llm.get_user_summary(
-                self.infos.video_title, self.infos.channel_name, self.base, group_id
+                self.video_infos.title, self.channel_infos.name, self.base, group_id
             )
             user_summaries.append(UserSummary(user_group=group_id, summary=user_summary))
 
-        return UserSummaryList.model_validate(user_summaries)
+        self.user_groups = UserSummaryList.model_validate(user_summaries)
+
+    def get_all(self, transcript: str) -> None:
+        self.get_base(transcript)
+        self.get_short()
+        self.get_title()
+        self.get_user_groups()
 
     def save(self) -> None:
-        file_name = f"""{self.infos.date.strftime("%Y-%m-%d")}.{self.infos.video_id}.json"""
+        file_name = f"""{self.video_infos.date.strftime("%Y-%m-%d")}.{self.video_infos.id}.json"""
         file_path = io.SUMMARIES_LOCAL_PATH / file_name
         with open(file_path, "w") as file:
             json.dump(self.model_dump(mode="json"), file, indent=4)
+
+
+class SummaryList(RootModelList):
+    root: list[Summary]
+
+    @classmethod
+    def init_from_videos(cls, videos: VideoList):
+        summaries = []
+        for video in videos:
+            summaries.append(Summary.init_from_video(video))
+        return cls.model_validate(summaries)
+
+    @classmethod
+    def init_from_files_with_videos(cls, videos: VideoList):
+        summaries = []
+        for video in videos:
+            summaries.append(Summary.init_from_file(video.infos.id))
+        return cls.model_validate(summaries)
+
+    @classmethod
+    def init_from_files_with_videos_id(cls, videos_id: list[VideoID]):
+        summaries = []
+        for video_id in videos_id:
+            summaries.append(Summary.init_from_file(video_id))
+        return cls.model_validate(summaries)
+
+    def get_bases(self, videos: VideoList) -> None:
+        mapping = {video.infos.id: idx for idx, video in enumerate(videos)}
+        for summary in self.root:
+            idx = mapping[summary.video_infos.id]
+            summary.get_base(videos[idx].transcript.text)
+
+    def get_shorts(self) -> None:
+        for summary in self.root:
+            summary.get_short()
+
+    def get_titles(self) -> None:
+        for summary in self.root:
+            summary.get_title()
+
+    def get_user_groups(self) -> None:
+        for summary in self.root:
+            summary.get_user_groups()
+
+    def get_all(self, videos: VideoList) -> None:
+        self.get_bases(videos)
+        self.get_shorts()
+        self.get_titles()
+        self.get_user_groups()
+
+    def save(self) -> None:
+        for summary in self.root:
+            summary.save()
 
 
 class Newsletter(BaseModel):
@@ -314,5 +365,5 @@ class Newsletter(BaseModel):
     html: str
 
     @classmethod
-    def init_from_summaries(cls, user_group: UserGroup, summaries: list[Summary]):
+    def init_from_summaries(cls, user_group: UserGroup, summaries: SummaryList):
         ...

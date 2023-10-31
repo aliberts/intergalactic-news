@@ -1,4 +1,4 @@
-from youtube_transcript_api._transcripts import Transcript as YtTranscript
+from youtube_transcript_api._transcripts import Transcript
 
 from inews.infra import apis
 from inews.infra.types import VideoID
@@ -21,12 +21,12 @@ def get_channel_recent_videos_id(uploads_playlist_id: str, max_results: int = 50
     return request.execute()
 
 
-def get_videos_info(videos_id: list[VideoID]) -> dict:
+def get_videos_infos(videos_id: list[VideoID]) -> dict:
     request = youtube_api.videos().list(part="snippet,contentDetails", id=videos_id)
     return request.execute()
 
 
-def get_available_transcript(video_id: VideoID) -> YtTranscript | None:
+def get_available_transcript(video_id: VideoID) -> Transcript | None:
     try:
         return yt_transcript_api.list_transcripts(video_id).find_transcript(["en"])
     except apis.TranscriptError:
