@@ -8,13 +8,6 @@ def format_transcript(raw_transcript):
     return " ".join(transcript.split())
 
 
-def format_transcripts(raw_transcripts: dict) -> dict:
-    return {
-        video_id: format_transcript(raw_transcript)
-        for video_id, raw_transcript in raw_transcripts.items()
-    }
-
-
 def count_tokens(text: str) -> int:
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
     return len(encoding.encode(text))
