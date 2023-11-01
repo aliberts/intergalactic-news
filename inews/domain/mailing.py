@@ -2,7 +2,7 @@ from pprint import pprint
 
 from mailchimp_marketing.api_client import ApiClientError
 
-from inews.domain.models import Summary, UserGroup
+from inews.domain.models import Summary, SummaryList, UserGroup
 from inews.infra import apis, io
 
 mailchimp_api, members_list_id, campaign_id = apis.get_mailchimp()
@@ -37,9 +37,9 @@ def build_story_block(user_group: UserGroup, summary: Summary, aligned: str = "l
     newsletter_summary_block = io.read_html_template(f"{aligned}_aligned_block")
     user_summary_block = io.read_html_template("user_summary_block")
     story_block = (
-        newsletter_summary_block.replace("[INEWS:VIDEO_ID]", summary.infos.video_id)
-        .replace("[INEWS:VIDEO_TITLE]", summary.infos.video_title)
-        .replace("[INEWS:VIDEO_THUMBNAIL_URL]", summary.infos.thumbnail_url)
+        newsletter_summary_block.replace("[INEWS:VIDEO_ID]", summary.video_infos.id)
+        .replace("[INEWS:VIDEO_TITLE]", summary.video_infos.title)
+        .replace("[INEWS:VIDEO_THUMBNAIL_URL]", summary.video_infos.thumbnail_url)
         .replace("[INEWS:TITLE_SUMMARY]", summary.title)
         .replace("[INEWS:SHORT_SUMMARY]", summary.short)
     )
@@ -57,7 +57,7 @@ def build_divider_block():
     return io.read_html_template("divider_block")
 
 
-def create_newsletter(user: UserGroup, summaries: list[Summary]):
+def create_newsletter(user: UserGroup, summaries: SummaryList):
     content = ""
     newsletter_summary = "This is the newsletter summary."
     content += build_summary_block(

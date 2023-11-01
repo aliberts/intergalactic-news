@@ -269,33 +269,25 @@ class Summary(BaseModel):
     def init_from_video(cls, video: Video):
         return cls(video_infos=video.infos, channel_infos=video.channel_infos)
 
-    def get_base_from_transcript(self, transcript: str) -> None:
-        self.base = llm.get_base_summary(
-            self.video_infos.title, self.channel_infos.name, transcript
-        )
+    def get_base_from_video(self, video: Video) -> None:
+        self.base = llm.get_base_summary(self, video)
 
     def get_short(self) -> None:
-        self.short = llm.get_short_summary(
-            self.video_infos.title, self.channel_infos.name, self.base
-        )
+        self.short = llm.get_short_summary(self)
 
     def get_title(self) -> None:
-        self.title = llm.get_title_summary(
-            self.video_infos.title, self.channel_infos.name, self.base
-        )
+        self.title = llm.get_title_summary(self)
 
     def get_user_groups(self) -> None:
         user_summaries = []
         for group_id in USER_GROUPS:
-            user_summary = llm.get_user_summary(
-                self.video_infos.title, self.channel_infos.name, self.base, group_id
-            )
+            user_summary = llm.get_user_summary(self, group_id)
             user_summaries.append(UserSummary(user_group=group_id, summary=user_summary))
 
         self.user_groups = UserSummaryList.model_validate(user_summaries)
 
-    def get_all(self, transcript: str) -> None:
-        self.get_base_from_transcript(transcript)
+    def get_all(self, video: Video) -> None:
+        self.get_base_from_video(video)
         self.get_short()
         self.get_title()
         self.get_user_groups()
@@ -335,7 +327,7 @@ class SummaryList(RootModelList):
         mapping = {video.infos.id: idx for idx, video in enumerate(videos)}
         for summary in self.root:
             idx = mapping[summary.video_infos.id]
-            summary.get_base_from_transcript(videos[idx].transcript.text)
+            summary.get_base_from_video(videos[idx])
 
     def get_shorts(self) -> None:
         for summary in self.root:
