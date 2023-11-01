@@ -74,7 +74,7 @@ class VideoInfos(BaseModel):
 
 
 class VideoInfosList(RootModelList):
-    root: list[VideoInfos]
+    root: list[VideoInfos] = Field(default_factory=list)
 
     @classmethod
     def init_from_ids(cls, videos_id: list[VideoID]):
@@ -109,7 +109,7 @@ class ChannelInfos(BaseModel):
 
 class Channel(BaseModel):
     infos: ChannelInfos
-    last_week_videos: VideoInfosList = Field(default_factory=lambda: [])
+    last_week_videos: VideoInfosList = Field(default_factory=lambda: VideoInfosList())
 
     @classmethod
     def init_from_api_response(cls, api_response: dict):
@@ -132,7 +132,7 @@ class Channel(BaseModel):
 
 
 class ChannelList(RootModelList):
-    root: list[Channel]
+    root: list[Channel] = Field(default_factory=list)
 
     @classmethod
     def init_from_api_with_ids(cls, channels_id: list[str]):
@@ -197,7 +197,7 @@ class Video(BaseModel):
 
 
 class VideoList(RootModelList):
-    root: list[Video]
+    root: list[Video] = Field(default_factory=list)
 
     @classmethod
     def init_from_channels(cls, channels: ChannelList):
@@ -247,7 +247,7 @@ class UserSummary(BaseModel):
 
 
 class UserSummaryList(RootModelList):
-    root: list[UserSummary]
+    root: list[UserSummary] = Field(default_factory=list)
 
 
 class Summary(BaseModel):
@@ -256,7 +256,7 @@ class Summary(BaseModel):
     base: str = ""
     short: str = ""
     title: str = ""
-    user_groups: UserSummaryList = Field(default_factory=list)
+    user_groups: UserSummaryList = Field(default_factory=lambda: UserSummaryList())
 
     @classmethod
     def init_from_file(cls, video_id: VideoID):
@@ -269,7 +269,7 @@ class Summary(BaseModel):
     def init_from_video(cls, video: Video):
         return cls(video_infos=video.infos, channel_infos=video.channel_infos)
 
-    def get_base(self, transcript: str) -> None:
+    def get_base_from_transcript(self, transcript: str) -> None:
         self.base = llm.get_base_summary(
             self.video_infos.title, self.channel_infos.name, transcript
         )
@@ -295,7 +295,7 @@ class Summary(BaseModel):
         self.user_groups = UserSummaryList.model_validate(user_summaries)
 
     def get_all(self, transcript: str) -> None:
-        self.get_base(transcript)
+        self.get_base_from_transcript(transcript)
         self.get_short()
         self.get_title()
         self.get_user_groups()
@@ -308,7 +308,7 @@ class Summary(BaseModel):
 
 
 class SummaryList(RootModelList):
-    root: list[Summary]
+    root: list[Summary] = Field(default_factory=list)
 
     @classmethod
     def init_from_videos(cls, videos: VideoList):
@@ -331,11 +331,11 @@ class SummaryList(RootModelList):
             summaries.append(Summary.init_from_file(video_id))
         return cls.model_validate(summaries)
 
-    def get_bases(self, videos: VideoList) -> None:
+    def get_bases_from_videos(self, videos: VideoList) -> None:
         mapping = {video.infos.id: idx for idx, video in enumerate(videos)}
         for summary in self.root:
             idx = mapping[summary.video_infos.id]
-            summary.get_base(videos[idx].transcript.text)
+            summary.get_base_from_transcript(videos[idx].transcript.text)
 
     def get_shorts(self) -> None:
         for summary in self.root:
@@ -350,7 +350,7 @@ class SummaryList(RootModelList):
             summary.get_user_groups()
 
     def get_all(self, videos: VideoList) -> None:
-        self.get_bases(videos)
+        self.get_bases_from_videos(videos)
         self.get_shorts()
         self.get_titles()
         self.get_user_groups()
