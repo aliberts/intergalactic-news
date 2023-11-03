@@ -48,6 +48,19 @@ class SummaryP(Protocol):
     video_infos: VideoInfosP
     channel_infos: ChannelInfosP
     base: str
+    topics: str
+
+
+class StoryP(Protocol):
+    video_infos: VideoInfosP
+    channel_infos: ChannelInfosP
     short: str
     title: str
-    user_groups: list
+    user_stories: list
+
+
+class NewsletterP(Protocol):
+    group_id: UserGroup
+    stories: list[StoryP]
+    summary: str
+    html: str
