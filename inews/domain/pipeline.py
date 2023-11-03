@@ -113,3 +113,7 @@ def run_newsletter():
         newsletter = Newsletter(group_id=group_id, stories=stories, summary=newsletter_summary)
         newsletter.build_html()
         newsletter.save()
+
+
+def run_mailing():
+    ...  # TODO
