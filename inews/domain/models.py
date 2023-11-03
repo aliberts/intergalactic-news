@@ -65,12 +65,12 @@ class VideoInfos(BaseModel):
         return pendulum.parse(self.duration).minutes >= data_config["min_video_duration"]
 
     @cached_property
-    def is_from_this_week(self) -> bool:
-        return (datetime.now(timezone.utc) - self.date).days < 7
+    def is_recent(self) -> bool:
+        return (datetime.now(timezone.utc) - self.date).days < data_config["recent_videos_days_old"]
 
     @property
     def is_valid(self) -> bool:
-        return self.is_not_short and self.is_from_this_week
+        return self.is_not_short and self.is_recent
 
 
 class VideoInfosList(RootModelList):

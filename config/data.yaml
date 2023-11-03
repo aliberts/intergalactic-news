@@ -1,3 +1,4 @@
 user_groups: [0, 1, 2]
 min_video_duration: 2  # minimum video length in minutes
 number_of_topics: 3
+recent_videos_days_old: 7
