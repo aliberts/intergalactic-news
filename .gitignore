@@ -10,9 +10,9 @@ dev.py
 
 # Data
 data/*.json
-
 data/transcripts/*.json
 data/summaries/*.json
+data/stories/*.json
 data/html/build/*.html
 
 
