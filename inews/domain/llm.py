@@ -1,11 +1,12 @@
 from inews.domain import preprocessing, prompts
-from inews.infra import apis
-from inews.infra.types import SummaryP, UserGroup, VideoP
+from inews.infra import apis, io
+from inews.infra.types import StoryP, SummaryP, UserGroup, VideoP
 
+data_config = io.get_data_config()
 openai_api = apis.get_openai()
 
 WINDOW_THRESHOLD = 3500
-TEMPERATURE = 0.4
+TEMPERATURE = 0.7
 
 DEBUG = False
 
@@ -18,24 +19,33 @@ def generate_base_summary_prompt(summary: SummaryP, video: VideoP) -> str:
     )
 
 
-def generate_short_summary_prompt(summary: SummaryP) -> str:
-    return prompts.SHORT_SUMMARY.format(
+def generate_topics_prompt(summary: SummaryP) -> str:
+    return prompts.TOPICS.format(
+        number_of_topics=data_config["number_of_topics"],
         video_title=summary.video_infos.title,
         channel_name=summary.channel_infos.name,
         summary=summary.base,
     )
 
 
-def generate_title_summary_prompt(summary: SummaryP) -> str:
-    return prompts.TITLE_SUMMARY.format(
+def generate_short_story_prompt(summary: SummaryP) -> str:
+    return prompts.SHORT_STORY.format(
         video_title=summary.video_infos.title,
         channel_name=summary.channel_infos.name,
         summary=summary.base,
     )
 
 
-def generate_user_summary_prompt(summary: SummaryP, user_group: UserGroup) -> str:
-    return prompts.USER_SUMMARY.format(
+def generate_title_story_prompt(summary: SummaryP) -> str:
+    return prompts.TITLE_STORY.format(
+        video_title=summary.video_infos.title,
+        channel_name=summary.channel_infos.name,
+        summary=summary.base,
+    )
+
+
+def generate_user_story_prompt(summary: SummaryP, user_group: UserGroup) -> str:
+    return prompts.USER_STORY.format(
         user_science_cat=prompts.SCIENCE_GROUP_TO_PROMPT[user_group],
         video_title=summary.video_infos.title,
         channel_name=summary.channel_infos.name,
@@ -43,27 +53,34 @@ def generate_user_summary_prompt(summary: SummaryP, user_group: UserGroup) -> st
     )
 
 
-def generate_stories_selection_prompt(summaries: list[SummaryP]) -> str:
-    titles_and_shorts = ""
+def generate_stories_selection_from_topics_prompt(summaries: list[SummaryP]) -> str:
+    topics = ""
     for idx, summary in enumerate(summaries):
-        titles_and_shorts += f"\n{str(idx + 1)}. {summary.title}\n{summary.short}\n"
-    return prompts.STORIES_SELECTION.format(titles_and_shorts=titles_and_shorts)
+        topics += f"\n{str(idx + 1)}. {summary.topics}\n"
+    return prompts.STORIES_SELECTION_FROM_TOPICS.format(topics=topics)
 
 
-def generate_newsletter_summary_prompt(*args, **kwargs) -> str:
-    ...
+def generate_newsletter_summary_prompt(stories: list[StoryP]) -> str:
+    titles_and_shorts = ""
+    for idx, story in enumerate(stories):
+        titles_and_shorts += f"\n{str(idx + 1)}. {story.title}\n{story.short}\n"
+    return prompts.NEWSLETTER_SUMMARY.format(titles_and_shorts=titles_and_shorts)
 
 
 def get_model_response(prompt: str) -> str:
     if DEBUG:
         return "This is a model response"
-    tokens_count = preprocessing.count_tokens(prompt)
-    model = "gpt-3.5-turbo" if tokens_count < WINDOW_THRESHOLD else "gpt-3.5-turbo-16k"
-    print(f"tokens: {tokens_count}, using {model}")
+    messages = [
+        {"role": "system", "content": prompts.SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    messages_tokens_count = preprocessing.count_tokens_from_messages(messages)
+    model = "gpt-3.5-turbo" if messages_tokens_count < WINDOW_THRESHOLD else "gpt-3.5-turbo-16k"
+    print(f"tokens: {messages_tokens_count}, using {model}")
     completion = openai_api.ChatCompletion.create(
         model=model,
         temperature=TEMPERATURE,
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
     )
     return completion.choices[0].message.content
 
@@ -75,34 +92,47 @@ def get_base_summary(summary: SummaryP, video: VideoP) -> str:
     return get_model_response(prompt)
 
 
+def get_topics(summary: SummaryP) -> str:
+    if DEBUG:
+        return "This is a list of topics"
+    prompt = generate_topics_prompt(summary)
+    return get_model_response(prompt)
+
+
+def get_stories_selection_from_topics(summaries: list[SummaryP]) -> list[str]:
+    if DEBUG:
+        return ["no", "yes", "no", "yes"]
+    prompt = generate_stories_selection_from_topics_prompt(summaries)
+    selection = get_model_response(prompt)
+    return selection.lower().split(",")
+
+
 def get_short_summary(summary: SummaryP) -> str:
     if DEBUG:
-        return "This is a short summary"
-    prompt = generate_short_summary_prompt(summary)
+        return "This is a short story"
+    prompt = generate_short_story_prompt(summary)
     return get_model_response(prompt)
 
 
 def get_title_summary(summary: SummaryP) -> str:
     if DEBUG:
-        return "This is a title"
-    prompt = generate_title_summary_prompt(summary)
+        return "This is a title story"
+    prompt = generate_title_story_prompt(summary)
     return get_model_response(prompt)
 
 
-def get_user_summary(summary: SummaryP, user_group: UserGroup) -> str:
+def get_user_story(summary: SummaryP, user_group: UserGroup) -> str:
     if DEBUG:
         return (
-            f"This is a summary for a user with {prompts.SCIENCE_GROUP_TO_PROMPT[user_group]}"
+            f"This is a user story for a user with {prompts.SCIENCE_GROUP_TO_PROMPT[user_group]}"
             + "-level scientific background"
         )
-    prompt = generate_user_summary_prompt(summary, user_group)
+    prompt = generate_user_story_prompt(summary, user_group)
     return get_model_response(prompt)
 
 
-def get_stories_selection(summaries: list[SummaryP]) -> str:
-    prompt = generate_stories_selection_prompt(summaries)
+def get_newsletter_summary(stories: list[StoryP]) -> str:
+    if DEBUG:
+        return "This is a newsletter summary"
+    prompt = generate_newsletter_summary_prompt(stories)
     return get_model_response(prompt)
-
-
-def get_newsletter_summary(*args, **kwargs) -> str:
-    ...
