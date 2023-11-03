@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, RootModel
 from tqdm import tqdm
 from youtube_transcript_api._transcripts import Transcript
 
-from inews.domain import llm, mailing, preprocessing, youtube
+from inews.domain import html, llm, preprocessing, youtube
 from inews.infra import io
 from inews.infra.types import ChannelID, UserGroup, VideoID
 
@@ -259,7 +259,7 @@ class Newsletter(BaseModel):
         return cls(group_id=group_id, stories=stories)
 
     def build_html(self) -> None:
-        self.html = mailing.create_newsletter(self)
+        self.html = html.create_newsletter(self)
 
     def save(self) -> None:
         file_path = io.HTML_BUILD_PATH / f"newsletter_{self.group_id}.html"
