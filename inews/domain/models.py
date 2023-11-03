@@ -1,19 +1,27 @@
-import json
 from datetime import datetime, timezone
 from functools import cached_property
+from pathlib import Path
+from pprint import pformat
 from typing import Any
 
 import pendulum
 from pydantic import BaseModel, Field, RootModel
 from tqdm import tqdm
-from unidecode import unidecode
 from youtube_transcript_api._transcripts import Transcript
 
 from inews.domain import llm, mailing, preprocessing, youtube
 from inews.infra import io
-from inews.infra.types import UserGroup, VideoID
+from inews.infra.types import ChannelID, UserGroup, VideoID
 
 data_config = io.get_data_config()
+
+
+def pprint_repr(base_model):
+    return pformat(base_model.model_dump(mode="json"))
+
+
+BaseModel.__repr__ = pprint_repr
+RootModel.__repr__ = pprint_repr
 
 
 class RootModelList(RootModel):
@@ -41,24 +49,12 @@ class RootModelList(RootModel):
         self.root.pop(key)
 
 
-class VideoInfos(BaseModel):
+class VideoInfo(BaseModel):
     id: VideoID
     title: str
     date: datetime
     duration: str
     thumbnail_url: str
-
-    @classmethod
-    def init_from_api_response(cls, api_response: dict):
-        return cls(
-            **{
-                "id": api_response["id"],
-                "title": unidecode(api_response["snippet"]["title"]),
-                "date": api_response["snippet"]["publishedAt"],
-                "duration": api_response["contentDetails"]["duration"],
-                "thumbnail_url": api_response["snippet"]["thumbnails"]["medium"]["url"],
-            }
-        )
 
     @cached_property
     def is_not_short(self) -> bool:
@@ -73,79 +69,46 @@ class VideoInfos(BaseModel):
         return self.is_not_short and self.is_recent
 
 
-class VideoInfosList(RootModelList):
-    root: list[VideoInfos] = Field(default_factory=list)
-
-    @classmethod
-    def init_from_ids(cls, videos_id: list[VideoID]):
-        api_response = youtube.get_videos_infos(videos_id)
-        videos = []
-        for item in api_response["items"]:
-            videos.append(VideoInfos.init_from_api_response(item))
-
-        return cls.model_validate(videos)
-
-    def drop_invalids(self) -> None:
-        self.root = [video for video in self.root if video.is_valid]
-
-
-class ChannelInfos(BaseModel):
-    id: str
+class ChannelInfo(BaseModel):
+    id: ChannelID
     name: str
     uploads_playlist_id: str
 
-    @classmethod
-    def init_from_api_response(cls, api_response: dict):
-        return cls(
-            **{
-                "id": api_response["id"],
-                "name": api_response["snippet"]["title"],
-                "uploads_playlist_id": api_response["contentDetails"]["relatedPlaylists"][
-                    "uploads"
-                ],
-            }
-        )
-
 
 class Channel(BaseModel):
-    infos: ChannelInfos
-    recent_videos: VideoInfosList = Field(default_factory=VideoInfosList)
-
-    @classmethod
-    def init_from_api_response(cls, api_response: dict):
-        infos = ChannelInfos.init_from_api_response(api_response)
-        return cls(infos=infos)
-
-    def get_recent_videos_id_from_api(self) -> list[VideoID]:
-        api_response = youtube.get_channel_recent_videos_id(self.infos.uploads_playlist_id)
-        videos_id = []
-        for item in api_response["items"]:
-            videos_id.append(item["snippet"]["resourceId"]["videoId"])
-        return videos_id
+    info: ChannelInfo
+    recent_videos: list[VideoInfo] = Field(default_factory=list)
 
     def update_recent_videos(self) -> None:
-        videos_id = self.get_recent_videos_id_from_api()
-        videos = VideoInfosList.init_from_ids(videos_id)
-        videos.drop_invalids()
+        videos_id = youtube.get_channel_recent_videos_id(self.info.uploads_playlist_id)
+        video_infos = youtube.get_videos_infos(videos_id)
+
+        videos = []
+        for item in video_infos:
+            videos.append(VideoInfo(**item))
+
+        videos = [video for video in videos if video.is_valid]
         self.recent_videos = videos
 
 
-class ChannelList(RootModelList):
+class Channels(RootModelList):
     root: list[Channel] = Field(default_factory=list)
 
     @classmethod
-    def init_from_api_with_ids(cls, channels_id: list[str]):
-        api_response = youtube.get_channels_info(channels_id)
-        channels = []
-        for item in api_response["items"]:
-            channels.append(Channel.init_from_api_response(item))
-        return cls.model_validate(channels)
+    def init_from_file(cls, file_path: Path):
+        # Getting local channels file
+        json_data = io.load_from_json_file(file_path)
+        root = cls.model_validate(json_data)
 
-    @classmethod
-    def init_from_file(cls):
-        with open(io.CHANNELS_LOCAL_FILE) as file:
-            json_data = json.load(file)
-        return cls.model_validate(json_data)
+        # Adding new channels from config if there are any
+        config_channel_ids = io.get_config_channel_ids()
+        channel_ids = [channel.info.id for channel in root]
+        new_channel_ids = [id for id in config_channel_ids if id not in channel_ids]
+        new_channel_infos = youtube.get_channels_info(new_channel_ids)
+        for channel_info in new_channel_infos:
+            info = ChannelInfo.model_validate(channel_info)
+            root.append(Channel(info=info))
+        return root
 
     def update_recent_videos(self) -> None:
         print("Updating channels recent videos")
@@ -153,8 +116,7 @@ class ChannelList(RootModelList):
             channel.update_recent_videos()
 
     def save(self) -> None:
-        with open(io.CHANNELS_LOCAL_FILE, "w") as file:
-            json.dump(self.model_dump(mode="json"), file, indent=4)
+        io.save_to_json_file(self.model_dump(mode="json"), io.CHANNELS_LOCAL_FILE)
 
 
 class ProcessedTranscript(BaseModel):
@@ -171,103 +133,52 @@ class ProcessedTranscript(BaseModel):
 
 
 class Video(BaseModel):
-    infos: VideoInfos
-    channel_infos: ChannelInfos
-    allow_requests: bool = True
+    info: VideoInfo
+    channel_info: ChannelInfo
     transcript: ProcessedTranscript | None = None
+    allow_requests: bool = True
 
     @classmethod
-    def init_from_file(cls, video_id: VideoID):
-        for file_path in io.TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"):
-            with open(file_path) as file:
-                json_data = json.load(file)
-            video = cls.model_validate(json_data)
-            video.allow_requests = False
-            return video
+    def init_from_file(cls, video_info: VideoInfo):
+        file_path = io.TRANSCRIPTS_LOCAL_PATH / io.get_file_name(video_info)
+        json_data = io.load_from_json_file(file_path)
+        video = cls.model_validate(json_data)
+        video.allow_requests = False
+        return video
 
     def get_available_transcript(self) -> None:
         if not self.allow_requests:
             return
 
-        available_transcript = youtube.get_available_transcript(self.infos.id)
+        available_transcript = youtube.get_available_transcript(self.info.id)
         if available_transcript is None:
             self.transcript = None
         else:
             self.transcript = ProcessedTranscript.init_from_transcript(available_transcript)
 
     def save(self) -> None:
-        file_name = f"""{self.infos.date.date()}.{self.infos.id}.json"""
-        file_path = io.TRANSCRIPTS_LOCAL_PATH / file_name
-        with open(file_path, "w") as file:
-            json.dump(self.model_dump(mode="json", exclude={"allow_requests"}), file, indent=4)
-
-
-class VideoList(RootModelList):
-    root: list[Video] = Field(default_factory=list)
-
-    @classmethod
-    def init_from_channels(cls, channels: ChannelList, use_local_files: bool = True):
-        videos = []
-        for channel in channels:
-            for video_infos in channel.recent_videos:
-                if io.video_in_local_files(video_infos.id) and use_local_files:
-                    videos.append(Video.init_from_file(video_infos.id))
-                else:
-                    videos.append(Video(infos=video_infos, channel_infos=channel.infos))
-        return cls.model_validate(videos)
-
-    @classmethod
-    def init_from_all_files(cls):
-        videos = []
-        for file_path in io.TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
-            with open(file_path) as file:
-                json_data = json.load(file)
-            videos.append(Video.model_validate(json_data))
-        return cls.model_validate(videos)
-
-    def allow_request(self, allow: bool):
-        for video in self.root:
-            video.allow_requests = allow
-
-    @classmethod
-    def init_from_files_with_videos_id(cls, videos_id: list[VideoID]):
-        videos = []
-        for video_id in videos_id:
-            videos.append(Video.init_from_file(video_id))
-        return cls.model_validate(videos)
-
-    def get_available_transcripts(self) -> None:
-        print("Getting transcripts")
-        for video in tqdm(self.root):
-            video.get_available_transcript()
-
-    def drop_no_transcripts(self) -> None:
-        self.root = [video for video in self.root if video.transcript is not None]
-
-    def save(self) -> None:
-        for video in self.root:
-            video.save()
+        file_path = io.TRANSCRIPTS_LOCAL_PATH / io.get_file_name(self.info)
+        io.save_to_json_file(self.model_dump(mode="json", exclude={"allow_requests"}), file_path)
 
 
 class Summary(BaseModel):
-    video_infos: VideoInfos
-    channel_infos: ChannelInfos
-    allow_requests: bool = True
+    video_info: VideoInfo
+    channel_info: ChannelInfo
     topics: str = ""
     base: str = ""
+    allow_requests: bool = True
 
     @classmethod
-    def init_from_file(cls, video_id: VideoID):
-        for file_path in io.SUMMARIES_LOCAL_PATH.rglob(f"*.{video_id}.json"):
-            with open(file_path) as file:
-                json_data = json.load(file)
-            summary = cls.model_validate(json_data)
-            summary.allow_requests = False
-            return summary
+    def init_from_file(cls, video_info: VideoInfo):
+        file_path = io.SUMMARIES_LOCAL_PATH / io.get_file_name(video_info)
+        json_data = io.load_from_json_file(file_path)
+        summary = cls.model_validate(json_data)
+        summary.allow_requests = False
+        return summary
 
     @classmethod
     def init_from_video(cls, video: Video):
-        return cls(video_infos=video.infos, channel_infos=video.channel_infos)
+        return cls(video_infos=video.info, channel_infos=video.channel_info)
 
     def get_base_from_video(self, video: Video) -> None:
         if self.allow_requests:
@@ -278,63 +189,8 @@ class Summary(BaseModel):
             self.topics = llm.get_topics(self)
 
     def save(self) -> None:
-        file_name = f"""{self.video_infos.date.date()}.{self.video_infos.id}.json"""
-        file_path = io.SUMMARIES_LOCAL_PATH / file_name
-        with open(file_path, "w") as file:
-            json.dump(self.model_dump(mode="json", exclude={"allow_requests"}), file, indent=4)
-
-
-class SummaryList(RootModelList):
-    root: list[Summary] = Field(default_factory=list)
-
-    @classmethod
-    def init_from_videos(cls, videos: VideoList, use_local_files: bool = True):
-        summaries = []
-        for video in videos:
-            if io.summary_in_local_files(video.infos.id) and use_local_files:
-                summaries.append(Summary.init_from_file(video.infos.id))
-            else:
-                summaries.append(Summary.init_from_video(video))
-        return cls.model_validate(summaries)
-
-    @classmethod
-    def init_from_files_with_videos_id(cls, videos_id: list[VideoID]):
-        summaries = []
-        for video_id in videos_id:
-            summaries.append(Summary.init_from_file(video_id))
-        return cls.model_validate(summaries)
-
-    def allow_request(self, allow: bool):
-        for summary in self.root:
-            summary.allow_requests = allow
-
-    def get_bases_from_videos(self, videos: VideoList) -> None:
-        mapping = {video.infos.id: idx for idx, video in enumerate(videos)}
-        print("Getting base summaries")
-        for summary in tqdm(self.root):
-            idx = mapping[summary.video_infos.id]
-            summary.get_base_from_video(videos[idx])
-
-    def get_topics(self) -> None:
-        print("Getting topics")
-        for summary in tqdm(self.root):
-            summary.get_topics()
-
-    def drop_irrelevants(self) -> None:
-        print("Selecting stories")
-        selection = llm.get_stories_selection_from_topics(self)
-        try:
-            self.root = [
-                summary
-                for (summary, include) in zip(self.root, selection, strict=True)
-                if include == "yes"
-            ]
-        except ValueError:
-            Warning("Stories could not be selected, every story will be included.")
-
-    def save(self) -> None:
-        for summary in self.root:
-            summary.save()
+        file_path = io.SUMMARIES_LOCAL_PATH / io.get_file_name(self.video_info)
+        io.save_to_json_file(self.model_dump(mode="json", exclude={"allow_requests"}), file_path)
 
 
 class User(BaseModel):
@@ -348,30 +204,25 @@ class UserStory(BaseModel):
     user_story: str = ""
 
 
-class UserStoryList(RootModelList):
-    root: list[UserStory] = Field(default_factory=list)
-
-
 class Story(BaseModel):
-    video_infos: VideoInfos
-    channel_infos: ChannelInfos
-    allow_requests: bool = True
+    video_info: VideoInfo
+    channel_info: ChannelInfo
     short: str = ""
     title: str = ""
-    user_stories: UserStoryList = Field(default_factory=UserStoryList)
+    user_stories: list[UserStory] = Field(default_factory=list)
+    allow_requests: bool = True
 
     @classmethod
-    def init_from_file(cls, video_id: VideoID):
-        for file_path in io.STORIES_LOCAL_PATH.rglob(f"*.{video_id}.json"):
-            with open(file_path) as file:
-                json_data = json.load(file)
-            summary = cls.model_validate(json_data)
-            summary.allow_requests = False
-            return summary
+    def init_from_file(cls, video_info: VideoInfo):
+        file_path = io.STORIES_LOCAL_PATH / io.get_file_name(video_info)
+        json_data = io.load_from_json_file(file_path)
+        story = cls.model_validate(json_data)
+        story.allow_requests = False
+        return story
 
     @classmethod
     def init_from_summary(cls, summary: Summary):
-        return cls(video_infos=summary.video_infos, channel_infos=summary.channel_infos)
+        return cls(video_infos=summary.video_info, channel_infos=summary.channel_info)
 
     def get_short_from_summary(self, summary: Summary) -> None:
         if self.allow_requests:
@@ -385,91 +236,31 @@ class Story(BaseModel):
         if not self.allow_requests:
             return
 
-        user_summaries = []
+        user_stories = []
         for group_id in data_config["user_groups"]:
             user_summary = llm.get_user_story(summary, group_id)
-            user_summaries.append(UserStory(user_group=group_id, user_story=user_summary))
-        self.user_stories = UserStoryList.model_validate(user_summaries)
+            user_stories.append(UserStory(user_group=group_id, user_story=user_summary))
+        self.user_stories = user_stories
         self.save()
 
     def save(self) -> None:
-        file_name = f"""{self.video_infos.date.date()}.{self.video_infos.id}.json"""
-        file_path = io.STORIES_LOCAL_PATH / file_name
-        with open(file_path, "w") as file:
-            json.dump(self.model_dump(mode="json", exclude={"allow_requests"}), file, indent=4)
-
-
-class StoryList(RootModelList):
-    root: list[Story] = Field(default_factory=list)
-
-    @classmethod
-    def init_from_summaries(cls, summaries: SummaryList, use_local_files: bool = True):
-        stories = []
-        for summary in summaries:
-            if io.story_in_local_files(summary.video_infos.id) and use_local_files:
-                stories.append(Story.init_from_file(summary.video_infos.id))
-            else:
-                stories.append(Story.init_from_summary(summary))
-        return cls.model_validate(stories)
-
-    @classmethod
-    def init_from_all_files(cls):
-        stories = []
-        for file_path in io.STORIES_LOCAL_PATH.rglob("*.json"):
-            with open(file_path) as file:
-                json_data = json.load(file)
-            stories.append(Story.model_validate(json_data))
-        stories = cls.model_validate(stories)
-        stories.allow_requests(False)
-        return stories
-
-    def allow_requests(self, allow: bool):
-        for story in self.root:
-            story.allow_requests = allow
-
-    def get_shorts_from_summaries(self, summaries: SummaryList) -> None:
-        print("Getting short stories")
-        mapping = {summary.video_infos.id: idx for idx, summary in enumerate(summaries)}
-        for story in tqdm(self.root):
-            idx = mapping[story.video_infos.id]
-            story.get_short_from_summary(summaries[idx])
-
-    def get_titles_from_summaries(self, summaries: SummaryList) -> None:
-        print("Getting title stories")
-        mapping = {summary.video_infos.id: idx for idx, summary in enumerate(summaries)}
-        for story in tqdm(self.root):
-            idx = mapping[story.video_infos.id]
-            story.get_title_from_summary(summaries[idx])
-
-    def get_user_groups_from_summaries(self, summaries: SummaryList) -> None:
-        print("Getting user stories")
-        mapping = {summary.video_infos.id: idx for idx, summary in enumerate(summaries)}
-        for story in tqdm(self.root):
-            idx = mapping[story.video_infos.id]
-            story.get_user_groups_from_summary(summaries[idx])
-
-    def save(self) -> None:
-        for summary in self.root:
-            summary.save()
+        file_path = io.STORIES_LOCAL_PATH / io.get_file_name(self.video_info)
+        io.save_to_json_file(self.model_dump(mode="json", exclude={"allow_requests"}), file_path)
 
 
 class Newsletter(BaseModel):
     group_id: UserGroup
-    stories: StoryList
-    allow_requests: bool = True
+    stories: list[Story]
     summary: str = ""
     html: str = ""
 
     @classmethod
-    def init_from_summaries(cls, group_id: UserGroup, stories: StoryList):
+    def init_from_summaries(cls, group_id: UserGroup, stories: list[Story]):
         return cls(group_id=group_id, stories=stories)
 
-    def make_html(self) -> None:
-        self.html = mailing.create_newsletter(self.group_id, self.stories)
-
-    def get_summary(self) -> None:
-        if self.allow_requests:
-            self.summary = llm.get_newsletter_summary(self.stories)
+    def build_html(self) -> None:
+        self.html = mailing.create_newsletter(self)
 
     def save(self) -> None:
-        io.write_html(self.html, f"newsletter_testing_{self.group_id}")
+        file_path = io.HTML_BUILD_PATH / f"newsletter_{self.group_id}.html"
+        io.save_to_html_file(self.html, file_path)

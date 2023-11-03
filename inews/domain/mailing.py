@@ -2,8 +2,8 @@ from pprint import pprint
 
 from mailchimp_marketing.api_client import ApiClientError
 
-from inews.domain.models import Story, StoryList, UserGroup
 from inews.infra import apis, io
+from inews.infra.types import NewsletterP, StoryP, UserGroup
 
 mailchimp_api, members_list_id, campaign_id = apis.get_mailchimp()
 
@@ -33,19 +33,19 @@ def build_summary_block(summary: str):
     return newsletter_summary_block.replace("[INEWS:NEWSLETTER_SUMMARY]", summary)
 
 
-def build_story_block(user_group: UserGroup, story: Story, aligned: str = "left"):
+def build_story_block(group_id: UserGroup, story: StoryP, aligned: str = "left"):
     title_block = io.read_html_template(f"{aligned}_aligned_title_block")
     short_story_block = io.read_html_template("short_story_block")
     user_story_block = io.read_html_template("user_story_block")
     story_block = (
-        title_block.replace("[INEWS:VIDEO_ID]", story.video_infos.id)
-        .replace("[INEWS:VIDEO_TITLE]", story.video_infos.title)
-        .replace("[INEWS:VIDEO_THUMBNAIL_URL]", story.video_infos.thumbnail_url)
+        title_block.replace("[INEWS:VIDEO_ID]", story.video_info.id)
+        .replace("[INEWS:VIDEO_TITLE]", story.video_info.title)
+        .replace("[INEWS:VIDEO_THUMBNAIL_URL]", story.video_info.thumbnail_url)
         .replace("[INEWS:TITLE_STORY]", story.title)
     )
     story_block += short_story_block.replace("[INEWS:SHORT_STORY]", story.short)
     story_block += user_story_block.replace(
-        "[INEWS:USER_STORY]", story.user_stories[user_group].user_story
+        "[INEWS:USER_STORY]", story.user_stories[group_id].user_story
     )
     return story_block
 
@@ -58,18 +58,15 @@ def build_divider_block():
     return io.read_html_template("divider_block")
 
 
-def create_newsletter(user: UserGroup, stories: StoryList):
+def create_newsletter(newsletter: NewsletterP):
     content = ""
-    newsletter_summary = "This is the newsletter summary."
-    content += build_summary_block(
-        f"Here's a recap of what we have for you this week:\n{newsletter_summary}"
-    )
+    content += build_summary_block(newsletter.summary)
     content += build_spacer_block()
 
-    for idx, summary in enumerate(stories):
+    for idx, story in enumerate(newsletter.stories):
         alignment = "left" if (idx % 2) == 0 else "right"
-        content += build_story_block(user, summary, alignment)
-        if idx < len(stories) - 1:
+        content += build_story_block(newsletter.group_id, story, alignment)
+        if idx < len(newsletter.stories) - 1:
             content += build_divider_block()
 
     newsletter_template = io.read_html_template("newsletter")

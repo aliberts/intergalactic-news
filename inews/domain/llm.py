@@ -13,8 +13,8 @@ DEBUG = False
 
 def generate_base_summary_prompt(summary: SummaryP, video: VideoP) -> str:
     return prompts.BASE_SUMMARY.format(
-        video_title=summary.video_infos.title,
-        channel_name=summary.channel_infos.name,
+        video_title=summary.video_info.title,
+        channel_name=summary.channel_info.name,
         transcript=video.transcript.text,
     )
 
@@ -22,24 +22,24 @@ def generate_base_summary_prompt(summary: SummaryP, video: VideoP) -> str:
 def generate_topics_prompt(summary: SummaryP) -> str:
     return prompts.TOPICS.format(
         number_of_topics=data_config["number_of_topics"],
-        video_title=summary.video_infos.title,
-        channel_name=summary.channel_infos.name,
+        video_title=summary.video_info.title,
+        channel_name=summary.channel_info.name,
         summary=summary.base,
     )
 
 
 def generate_short_story_prompt(summary: SummaryP) -> str:
     return prompts.SHORT_STORY.format(
-        video_title=summary.video_infos.title,
-        channel_name=summary.channel_infos.name,
+        video_title=summary.video_info.title,
+        channel_name=summary.channel_info.name,
         summary=summary.base,
     )
 
 
 def generate_title_story_prompt(summary: SummaryP) -> str:
     return prompts.TITLE_STORY.format(
-        video_title=summary.video_infos.title,
-        channel_name=summary.channel_infos.name,
+        video_title=summary.video_info.title,
+        channel_name=summary.channel_info.name,
         summary=summary.base,
     )
 
@@ -47,8 +47,8 @@ def generate_title_story_prompt(summary: SummaryP) -> str:
 def generate_user_story_prompt(summary: SummaryP, user_group: UserGroup) -> str:
     return prompts.USER_STORY.format(
         user_science_cat=prompts.SCIENCE_GROUP_TO_PROMPT[user_group],
-        video_title=summary.video_infos.title,
-        channel_name=summary.channel_infos.name,
+        video_title=summary.video_info.title,
+        channel_name=summary.channel_info.name,
         summary=summary.base,
     )
 

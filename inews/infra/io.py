@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
+from typing import Any
 
 import boto3
 import yaml
 
-from inews.infra.types import VideoID
+from inews.infra.types import ChannelID, VideoInfoP
 
 s3 = boto3.resource("s3")
 
@@ -84,25 +86,39 @@ def get_data_config() -> dict:
     return channels_id
 
 
-def get_channels_id() -> list:
+def get_config_channel_ids() -> list[ChannelID]:
     with open(CHANNELS_ID_FILE) as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 
 
-def video_in_local_files(video_id: VideoID) -> bool:
-    candidates = list(TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"))
-    return len(candidates) != 0
+def get_file_name(video_info: VideoInfoP) -> Path:
+    return Path(f"{video_info.date.date()}.{video_info.id}.json")
 
 
-def summary_in_local_files(video_id: VideoID) -> bool:
-    candidates = list(SUMMARIES_LOCAL_PATH.rglob(f"*.{video_id}.json"))
-    return len(candidates) != 0
+def video_in_local_files(video_info: VideoInfoP) -> bool:
+    file_path = TRANSCRIPTS_LOCAL_PATH / get_file_name(video_info)
+    return file_path.is_file()
 
 
-def story_in_local_files(video_id: VideoID) -> bool:
-    candidates = list(STORIES_LOCAL_PATH.rglob(f"*.{video_id}.json"))
-    return len(candidates) != 0
+def summary_in_local_files(video_info: VideoInfoP) -> bool:
+    file_path = SUMMARIES_LOCAL_PATH / get_file_name(video_info)
+    return file_path.is_file()
+
+
+def story_in_local_files(video_info: VideoInfoP) -> bool:
+    file_path = STORIES_LOCAL_PATH / get_file_name(video_info)
+    return file_path.is_file()
+
+
+def save_to_json_file(data: Any, file_path: Path) -> None:
+    with open(file_path, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def load_from_json_file(file_path: Path) -> Any:
+    with open(file_path) as file:
+        return json.load(file)
 
 
 def read_html_template(template_name: str) -> str:
@@ -112,7 +128,6 @@ def read_html_template(template_name: str) -> str:
     return html
 
 
-def write_html(html: str, file_name: str) -> None:
-    file_path = HTML_BUILD_PATH / f"{file_name}.html"
+def save_to_html_file(html: str, file_path: Path) -> None:
     with open(file_path, "w") as file:
         html = file.write(html)

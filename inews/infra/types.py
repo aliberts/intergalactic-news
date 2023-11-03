@@ -10,10 +10,17 @@ VideoID = Annotated[
     ),
 ]
 
+ChannelID = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, min_length=24, max_length=24, pattern=r"[A-Za-z0-9_-]{24}"
+    ),
+]
+
 UserGroup = Literal[0, 1, 2]
 
 
-class VideoInfosP(Protocol):
+class VideoInfoP(Protocol):
     id: VideoID
     title: str
     date: datetime
@@ -21,8 +28,8 @@ class VideoInfosP(Protocol):
     thumbnail_url: str
 
 
-class ChannelInfosP(Protocol):
-    id: str
+class ChannelInfoP(Protocol):
+    id: ChannelID
     name: str
     uploads_playlist_id: str
 
@@ -34,29 +41,29 @@ class ProcessedTranscriptP(Protocol):
 
 
 class VideoP(Protocol):
-    infos: VideoInfosP
-    channel_infos: ChannelInfosP
+    info: VideoInfoP
+    channel_info: ChannelInfoP
     transcript: ProcessedTranscriptP | None
 
 
-class UserSummaryP(Protocol):
-    user_group: UserGroup
-    summary: str
-
-
 class SummaryP(Protocol):
-    video_infos: VideoInfosP
-    channel_infos: ChannelInfosP
+    video_info: VideoInfoP
+    channel_info: ChannelInfoP
     base: str
     topics: str
 
 
+class UserStoryP(Protocol):
+    user_group: UserGroup
+    story: str
+
+
 class StoryP(Protocol):
-    video_infos: VideoInfosP
-    channel_infos: ChannelInfosP
+    video_info: VideoInfoP
+    channel_info: ChannelInfoP
     short: str
     title: str
-    user_stories: list
+    user_stories: list[UserStoryP]
 
 
 class NewsletterP(Protocol):
