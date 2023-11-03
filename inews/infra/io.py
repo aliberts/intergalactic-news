@@ -7,15 +7,23 @@ from inews.infra.types import VideoID
 
 s3 = boto3.resource("s3")
 
+# S3
 BUCKET = "intergalactic-news"
 CHANNELS_S3_FILE = "channels_state.json"
 TRANSCRIPTS_S3_PATH = "transcripts/"
 SUMMARIES_S3_PATH = "summaries/"
 
+# Config
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
+DATA_CONFIG_FILE = Path("config/data.yaml")
+
+# Data
 CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
 SUMMARIES_LOCAL_PATH = Path("data/summaries/")
+STORIES_LOCAL_PATH = Path("data/stories/")
+
+# Html
 HTML_TEMPLATE_PATH = Path("data/html/templates/")
 HTML_BUILD_PATH = Path("data/html/build/")
 
@@ -70,15 +78,31 @@ def push_to_bucket() -> None:
         bucket.upload_file(summary_file_path, s3_file_path)
 
 
+def get_data_config() -> dict:
+    with open(DATA_CONFIG_FILE) as file:
+        channels_id = yaml.safe_load(file)
+    return channels_id
+
+
 def get_channels_id() -> list:
     with open(CHANNELS_ID_FILE) as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 
 
-def is_new(video_id: VideoID) -> bool:
+def video_in_local_files(video_id: VideoID) -> bool:
     candidates = list(TRANSCRIPTS_LOCAL_PATH.rglob(f"*.{video_id}.json"))
-    return len(candidates) == 0
+    return len(candidates) != 0
+
+
+def summary_in_local_files(video_id: VideoID) -> bool:
+    candidates = list(SUMMARIES_LOCAL_PATH.rglob(f"*.{video_id}.json"))
+    return len(candidates) != 0
+
+
+def story_in_local_files(video_id: VideoID) -> bool:
+    candidates = list(STORIES_LOCAL_PATH.rglob(f"*.{video_id}.json"))
+    return len(candidates) != 0
 
 
 def read_html_template(template_name: str) -> str:
