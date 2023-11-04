@@ -4,9 +4,11 @@
 
 # Secrets
 .env
+config/mailing.yaml
 
 # Dev
 dev/
+dev.py
 
 # Data
 data/*.json
