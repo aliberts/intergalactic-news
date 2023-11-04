@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
 
@@ -27,7 +26,7 @@ BaseModel.__repr__ = pprint_repr
 class VideoInfo(BaseModel):
     id: VideoID
     title: str
-    date: datetime
+    date: PendulumDateTime
     duration: str
     thumbnail_url: str
 
@@ -37,7 +36,7 @@ class VideoInfo(BaseModel):
 
     @cached_property
     def is_recent(self) -> bool:
-        return (datetime.now(timezone.utc) - self.date).days < data_config["recent_videos_days_old"]
+        return (pendulum.now() - self.date).days < data_config["recent_videos_days_old"]
 
     @property
     def is_valid(self) -> bool:
