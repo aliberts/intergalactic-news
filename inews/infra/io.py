@@ -18,6 +18,7 @@ SUMMARIES_S3_PATH = "summaries/"
 # Config
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
 DATA_CONFIG_FILE = Path("config/data.yaml")
+MAILING_CONFIG_FILE = Path("config/mailing.yaml")
 
 # Data
 CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
@@ -83,6 +84,12 @@ def push_to_bucket() -> None:
 
 def get_data_config() -> dict:
     with open(DATA_CONFIG_FILE) as file:
+        channels_id = yaml.safe_load(file)
+    return channels_id
+
+
+def get_mailing_config() -> dict:
+    with open(MAILING_CONFIG_FILE) as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 

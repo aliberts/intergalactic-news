@@ -1,0 +1,10 @@
+mc_list_id: xxxxxxxxxx
+mc_group_interest_id: xxxxxxxxxx
+mc_group_interest_values:
+  - xxxxxxxxxx
+  - xxxxxxxxxx
+  - xxxxxxxxxx
+reply_to: sender.mail@example.com
+from_name: Intergalactic News
+test_mails:
+  - test.mail@example.com
