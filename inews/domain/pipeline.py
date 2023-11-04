@@ -18,7 +18,69 @@ from inews.domain.models import (
 from inews.infra import io
 
 data_config = io.get_data_config()
+
 DEBUG = True
+
+
+def run_data():
+    channels = Channels.init_from_file(io.CHANNELS_LOCAL_FILE)
+    channels.update_recent_videos()
+    channels.save()
+
+    videos = build_videos_from_channels(channels, use_local_files=True)
+    print("Getting transcripts")
+    for video in tqdm(videos):
+        video.get_available_transcript()
+
+    videos = [video for video in videos if video.transcript is not None]
+    for video in videos:
+        video.save()
+
+    summaries = build_summaries_from_videos(videos, use_local_files=True)
+    print("Getting summaries")
+    for summary, video in tqdm(zip(summaries, videos, strict=True)):
+        summary.get_base_from_video(video)
+        summary.save()
+
+        summary.get_topics()
+        summary.save()
+
+    print("Selecting relevant stories")
+    summaries = select_relevant_summaries(summaries)
+    stories = build_stories_from_summaries(summaries, use_local_files=True)
+
+    print("Building stories")
+    for story, summary in tqdm(zip(stories, summaries, strict=True)):
+        story.get_short_from_summary(summary)
+        story.save()
+        story.get_title_from_summary(summary)
+        story.save()
+        story.get_user_groups_from_summary(summary)
+        story.save()
+
+
+def run_mailing():
+    timezone = data_config["timezone"]
+    today = pendulum.today(tz=timezone)
+
+    if today.day_of_week != 3 and not DEBUG:
+        return
+
+    newsletters = build_newsletters(today)
+
+    if DEBUG:
+        newsletters = [newsletters[0]]
+
+    print("Sending newsletters")
+    for newsletter in tqdm(newsletters):
+        mc_campaign = MCCampaign.init_from_newsletter(newsletter)
+        mc_campaign.create()
+        mc_campaign.set_html()
+
+        if DEBUG:
+            mc_campaign.send_test()
+        else:
+            mc_campaign.send()
 
 
 def build_videos_from_channels(channels: Channels, use_local_files: bool = True) -> list[Video]:
@@ -85,43 +147,6 @@ def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
     return relevant_summaries
 
 
-def run_data():
-    channels = Channels.init_from_file(io.CHANNELS_LOCAL_FILE)
-    channels.update_recent_videos()
-    channels.save()
-
-    videos = build_videos_from_channels(channels, use_local_files=True)
-    print("Getting transcripts")
-    for video in tqdm(videos):
-        video.get_available_transcript()
-
-    videos = [video for video in videos if video.transcript is not None]
-    for video in videos:
-        video.save()
-
-    summaries = build_summaries_from_videos(videos, use_local_files=True)
-    print("Getting summaries")
-    for summary, video in tqdm(zip(summaries, videos, strict=True)):
-        summary.get_base_from_video(video)
-        summary.save()
-
-        summary.get_topics()
-        summary.save()
-
-    print("Selecting relevant stories")
-    summaries = select_relevant_summaries(summaries)
-    stories = build_stories_from_summaries(summaries, use_local_files=True)
-
-    print("Building stories")
-    for story, summary in tqdm(zip(stories, summaries, strict=True)):
-        story.get_short_from_summary(summary)
-        story.save()
-        story.get_title_from_summary(summary)
-        story.save()
-        story.get_user_groups_from_summary(summary)
-        story.save()
-
-
 def build_newsletters(today: DateTime) -> list[Newsletter]:
     stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
 
@@ -140,27 +165,3 @@ def build_newsletters(today: DateTime) -> list[Newsletter]:
         newsletters.append(newsletter)
 
     return newsletters
-
-
-def run_mailing():
-    timezone = data_config["timezone"]
-    today = pendulum.today(tz=timezone)
-
-    if today.day_of_week != 3 and not DEBUG:
-        return
-
-    newsletters = build_newsletters(today)
-
-    if DEBUG:
-        newsletters = [newsletters[0]]
-
-    print("Sending newsletters")
-    for newsletter in tqdm(newsletters):
-        mc_campaign = MCCampaign.init_from_newsletter(newsletter)
-        mc_campaign.create()
-        mc_campaign.set_html()
-
-        if DEBUG:
-            mc_campaign.send_test()
-        else:
-            mc_campaign.send()
