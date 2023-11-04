@@ -24,6 +24,7 @@ CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
 SUMMARIES_LOCAL_PATH = Path("data/summaries/")
 STORIES_LOCAL_PATH = Path("data/stories/")
+NEWSLETTERS_LOCAL_PATH = Path("data/newsletters/")
 
 # Html
 HTML_TEMPLATE_PATH = Path("data/html/templates/")

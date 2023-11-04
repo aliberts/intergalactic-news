@@ -1,31 +1,5 @@
-from pprint import pprint
-
-from mailchimp_marketing.api_client import ApiClientError
-
-from inews.infra import apis, io
+from inews.infra import io
 from inews.infra.types import NewsletterP, StoryP, UserGroup
-
-mailchimp_api, members_list_id, campaign_id = apis.get_mailchimp()
-
-
-def get_mailing_list():
-    try:
-        response = mailchimp_api.lists.get_list_members_info(members_list_id, count=1000)
-    except ApiClientError as error:
-        print(error)
-
-    for member in response["members"]:
-        pprint(member["email_address"])
-        pprint(member["merge_fields"])
-
-
-def get_template():
-    try:
-        response = mailchimp_api.campaigns.get_content(campaign_id)
-    except ApiClientError as error:
-        print(error)
-
-    pprint(response["html"])
 
 
 def build_summary_block(summary: str):
@@ -60,13 +34,13 @@ def build_divider_block():
 
 def create_newsletter(newsletter: NewsletterP):
     content = ""
-    content += build_summary_block(newsletter.summary)
+    content += build_summary_block(newsletter.info.summary)
     content += build_spacer_block()
 
-    for idx, story in enumerate(newsletter.stories):
+    for idx, story in enumerate(newsletter.info.stories):
         alignment = "left" if (idx % 2) == 0 else "right"
         content += build_story_block(newsletter.group_id, story, alignment)
-        if idx < len(newsletter.stories) - 1:
+        if idx < len(newsletter.info.stories) - 1:
             content += build_divider_block()
 
     newsletter_template = io.read_html_template("newsletter")

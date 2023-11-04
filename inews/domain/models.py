@@ -5,7 +5,8 @@ from pprint import pformat
 from typing import Any
 
 import pendulum
-from pydantic import BaseModel, Field, RootModel
+from pendulum import DateTime
+from pydantic import BaseModel, Field, RootModel, computed_field
 from tqdm import tqdm
 from youtube_transcript_api._transcripts import Transcript
 
@@ -248,19 +249,46 @@ class Story(BaseModel):
         io.save_to_json_file(self.model_dump(mode="json", exclude={"allow_requests"}), file_path)
 
 
-class Newsletter(BaseModel):
-    group_id: UserGroup
-    stories: list[Story]
+class NewsletterInfo(BaseModel):
+    date: DateTime
+
+    @computed_field
+    @cached_property
+    def issue_number(self) -> int:
+        first_issue_date = pendulum.parse(data_config["first_issue_date"], tz=timezone)
+        return (self.date - first_issue_date).in_weeks() + 1
+
+    @computed_field
+    @cached_property
+    def name(self) -> str:
+        return f"Intergalactic News #{self.issue_number} - {self.date.date()}"
+
+    @computed_field
+    @cached_property
+    def file_name(self) -> Path:
+        return Path(f"issue_{self.issue_number:04}.json")
+
     summary: str = ""
+    stories: list[Story]
+
+    def save(self) -> None:
+        file_path = io.NEWSLETTERS_LOCAL_PATH / self.file_name
+        io.save_to_json_file(self.model_dump(mode="json", exclude={"name", "file_name"}), file_path)
+
+
+class Newsletter(BaseModel):
+    info: NewsletterInfo
+    group_id: UserGroup
     html: str = ""
 
-    @classmethod
-    def init_from_summaries(cls, group_id: UserGroup, stories: list[Story]):
-        return cls(group_id=group_id, stories=stories)
+    @computed_field
+    @cached_property
+    def file_name(self) -> Path:
+        return Path(f"issue_{self.info.issue_number:04}_{self.group_id}.html")
 
     def build_html(self) -> None:
         self.html = html.create_newsletter(self)
 
-    def save(self) -> None:
-        file_path = io.HTML_BUILD_PATH / f"newsletter_{self.group_id}.html"
+    def save_html_build(self) -> None:
+        file_path = io.HTML_BUILD_PATH / self.file_name
         io.save_to_html_file(self.html, file_path)

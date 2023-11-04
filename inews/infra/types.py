@@ -66,8 +66,16 @@ class StoryP(Protocol):
     user_stories: list[UserStoryP]
 
 
-class NewsletterP(Protocol):
-    group_id: UserGroup
-    stories: list[StoryP]
+class NewsletterInfoP(Protocol):
+    issue_number: int
+    date: datetime
+    name: str
+    file_name: str
     summary: str
+    stories: list[StoryP]
+
+
+class NewsletterP(Protocol):
+    info: NewsletterInfoP
+    group_id: UserGroup
     html: str

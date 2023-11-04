@@ -1,12 +1,15 @@
+import warnings
 from pathlib import Path
 
+import pendulum
 from tqdm import tqdm
 
 from inews.domain import llm
-from inews.domain.models import Channels, Newsletter, Story, Summary, Video
+from inews.domain.models import Channels, Newsletter, NewsletterInfo, Story, Summary, Video
 from inews.infra import io
 
 data_config = io.get_data_config()
+DEBUG = True
 
 
 def build_videos_from_channels(channels: Channels, use_local_files: bool = True) -> list[Video]:
@@ -35,7 +38,7 @@ def build_stories_from_summaries(
 ) -> list[Story]:
     stories = []
     for summary in summaries:
-        if io.summary_in_local_files(summary.video_info) and use_local_files:
+        if io.story_in_local_files(summary.video_info) and use_local_files:
             stories.append(Story.init_from_file(summary.video_info))
         else:
             stories.append(Story(video_info=summary.video_info, channel_info=summary.channel_info))
@@ -54,14 +57,20 @@ def get_stories_from_data_folder(data_folder: Path) -> list[Story]:
 
 def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
     selection = llm.get_stories_selection_from_topics(summaries)
+
     try:
         relevant_summaries = [
             summary
             for (summary, include) in zip(summaries, selection, strict=False)
             if include == "yes"
         ]
+        if len(selection) < len(summaries):
+            warnings.warn(
+                "Story selection incomplete, some stories could be missing.", stacklevel=1
+            )
+
     except ValueError:
-        Warning("Stories could not be selected, every story will be included.")
+        warnings.warn("Stories could not be selected, every story will be included.", stacklevel=1)
         relevant_summaries = summaries
 
     return relevant_summaries
@@ -105,14 +114,26 @@ def run_data():
 
 
 def run_newsletter():
-    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
-    newsletter_summary = llm.get_newsletter_summary(stories)
-    print(newsletter_summary)
+    timezone = data_config["timezone"]
+    today = pendulum.today(tz=timezone)
 
-    for group_id in data_config["user_groups"]:
-        newsletter = Newsletter(group_id=group_id, stories=stories, summary=newsletter_summary)
+    if today.day_of_week != 3 and not DEBUG:
+        return
+
+    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
+
+    print("Getting newsletter summary")
+    summary = llm.get_newsletter_summary(stories)
+    summary = "summary"
+
+    newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
+    newsletter_info.save()
+
+    print("Building all newsletter versions")
+    for group_id in tqdm(data_config["user_groups"]):
+        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
         newsletter.build_html()
-        newsletter.save()
+        newsletter.save_html_build()
 
 
 def run_mailing():
