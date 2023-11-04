@@ -1,3 +1,5 @@
+from tenacity import retry, stop_after_attempt, wait_random_exponential
+
 from inews.domain import preprocessing, prompts
 from inews.infra import apis, io
 from inews.infra.types import StoryP, SummaryP, UserGroup, VideoP
@@ -67,6 +69,15 @@ def generate_newsletter_summary_prompt(stories: list[StoryP]) -> str:
     return prompts.NEWSLETTER_SUMMARY.format(titles_and_shorts=titles_and_shorts)
 
 
+@retry(wait=wait_random_exponential(min=10, max=60), stop=stop_after_attempt(5))
+def chat_completion(model: str, temperature: float, messages: list[dict]) -> dict:
+    return openai_api.ChatCompletion.create(
+        model=model,
+        temperature=temperature,
+        messages=messages,
+    )
+
+
 def get_model_response(prompt: str) -> str:
     if DEBUG:
         return "This is a model response"
@@ -77,11 +88,13 @@ def get_model_response(prompt: str) -> str:
     messages_tokens_count = preprocessing.count_tokens_from_messages(messages)
     model = "gpt-3.5-turbo" if messages_tokens_count < WINDOW_THRESHOLD else "gpt-3.5-turbo-16k"
     print(f"tokens: {messages_tokens_count}, using {model}")
-    completion = openai_api.ChatCompletion.create(
+
+    completion = chat_completion(
         model=model,
         temperature=TEMPERATURE,
         messages=messages,
     )
+
     return completion.choices[0].message.content
 
 
@@ -103,8 +116,7 @@ def get_stories_selection_from_topics(summaries: list[SummaryP]) -> list[str]:
     if DEBUG:
         return ["no", "yes", "no", "yes"]
     prompt = generate_stories_selection_from_topics_prompt(summaries)
-    selection = get_model_response(prompt)
-    return selection.lower().split(",")
+    return get_model_response(prompt).lower().split(",")
 
 
 def get_short_summary(summary: SummaryP) -> str:
