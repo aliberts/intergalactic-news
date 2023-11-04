@@ -2,10 +2,19 @@ import warnings
 from pathlib import Path
 
 import pendulum
+from pendulum import DateTime
 from tqdm import tqdm
 
 from inews.domain import llm
-from inews.domain.models import Channels, Newsletter, NewsletterInfo, Story, Summary, Video
+from inews.domain.models import (
+    Channels,
+    MCCampaign,
+    Newsletter,
+    NewsletterInfo,
+    Story,
+    Summary,
+    Video,
+)
 from inews.infra import io
 
 data_config = io.get_data_config()
@@ -113,28 +122,45 @@ def run_data():
         story.save()
 
 
-def run_newsletter():
+def build_newsletters(today: DateTime) -> list[Newsletter]:
+    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
+
+    print("Getting newsletter summary")
+    summary = llm.get_newsletter_summary(stories)
+
+    newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
+    newsletter_info.save()
+
+    print("Building all newsletter versions")
+    newsletters = []
+    for group_id in tqdm(data_config["user_groups"]):
+        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
+        newsletter.build_html()
+        newsletter.save_html_build()
+        newsletters.append(newsletter)
+
+    return newsletters
+
+
+def run_mailing():
     timezone = data_config["timezone"]
     today = pendulum.today(tz=timezone)
 
     if today.day_of_week != 3 and not DEBUG:
         return
 
-    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
+    newsletters = build_newsletters(today)
 
-    print("Getting newsletter summary")
-    summary = llm.get_newsletter_summary(stories)
-    summary = "summary"
+    if DEBUG:
+        newsletters = [newsletters[0]]
 
-    newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
-    newsletter_info.save()
+    print("Sending newsletters")
+    for newsletter in tqdm(newsletters):
+        mc_campaign = MCCampaign.init_from_newsletter(newsletter)
+        mc_campaign.create()
+        mc_campaign.set_html()
 
-    print("Building all newsletter versions")
-    for group_id in tqdm(data_config["user_groups"]):
-        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
-        newsletter.build_html()
-        newsletter.save_html_build()
-
-
-def run_mailing():
-    ...  # TODO
+        if DEBUG:
+            mc_campaign.send_test()
+        else:
+            mc_campaign.send()

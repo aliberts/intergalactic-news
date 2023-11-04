@@ -43,6 +43,4 @@ def get_mailchimp():
             "server": MAILCHIMP_SERVER_PREFIX,
         }
     )
-    members_list_id = os.environ["MAILCHIMP_MEMBERS_LIST_ID"]
-    campaign_id = os.environ["MAILCHIMP_CAMPAIGN_ID"]
-    return client, members_list_id, campaign_id
+    return client

@@ -1,53 +1,27 @@
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
-from pprint import pformat
-from typing import Any
 
 import pendulum
-from pendulum import DateTime
-from pydantic import BaseModel, Field, RootModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 from tqdm import tqdm
 from youtube_transcript_api._transcripts import Transcript
 
-from inews.domain import html, llm, preprocessing, youtube
+from inews.domain import html, llm, mailing, preprocessing, youtube
 from inews.infra import io
-from inews.infra.types import ChannelID, UserGroup, VideoID
+from inews.infra.types import (
+    ChannelID,
+    PendulumDateTime,
+    RootModelList,
+    UserGroup,
+    VideoID,
+    pprint_repr,
+)
 
 data_config = io.get_data_config()
 
 
-def pprint_repr(base_model):
-    return pformat(base_model.model_dump(mode="json"))
-
-
 BaseModel.__repr__ = pprint_repr
-RootModel.__repr__ = pprint_repr
-
-
-class RootModelList(RootModel):
-    root: list[Any]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def __setitem__(self, key, item):
-        self.root[key] = item
-
-    def __len__(self):
-        return len(self.root)
-
-    def sort(self, *args, **kwargs):
-        self.root.sort(*args, **kwargs)
-
-    def append(self, item):
-        self.root.append(item)
-
-    def pop(self, key):
-        self.root.pop(key)
 
 
 class VideoInfo(BaseModel):
@@ -250,12 +224,14 @@ class Story(BaseModel):
 
 
 class NewsletterInfo(BaseModel):
-    date: DateTime
+    date: PendulumDateTime
 
     @computed_field
     @cached_property
     def issue_number(self) -> int:
-        first_issue_date = pendulum.parse(data_config["first_issue_date"], tz=timezone)
+        first_issue_date = pendulum.parse(
+            data_config["first_issue_date"], tz=data_config["timezone"]
+        )
         return (self.date - first_issue_date).in_weeks() + 1
 
     @computed_field
@@ -292,3 +268,83 @@ class Newsletter(BaseModel):
     def save_html_build(self) -> None:
         file_path = io.HTML_BUILD_PATH / self.file_name
         io.save_to_html_file(self.html, file_path)
+
+
+class MCCampaign(BaseModel):
+    html: str
+
+    group_id: UserGroup
+    issue_number: int
+    date: PendulumDateTime
+
+    mc_id: str = ""
+    mc_list_id: str
+    mc_group_interest_id: str
+    mc_group_id: str
+
+    test_emails: list[str]
+    mail_preview: str
+    reply_to: str
+    from_name: str
+
+    @computed_field
+    @cached_property
+    def title(self) -> str:
+        return f"inews_{self.issue_number:04}_{self.group_id}"
+
+    @computed_field
+    @cached_property
+    def mail_subject(self) -> str:
+        return f"Intergalactic News #{self.issue_number:04} - {self.date.date()}"
+
+    @computed_field
+    @cached_property
+    def settings(self) -> dict:
+        return {
+            "type": "regular",
+            "recipients": {
+                "segment_opts": {
+                    "match": "all",
+                    "conditions": [
+                        {
+                            "condition_type": "Interests",
+                            "field": f"interests-{self.mc_group_interest_id}",
+                            "op": "interestcontains",
+                            "value": [self.mc_group_id],
+                        }
+                    ],
+                },
+                "list_id": self.mc_list_id,
+            },
+            "settings": {
+                "title": self.title,
+                "subject_line": self.mail_subject,
+                "from_name": self.from_name,
+                "reply_to": self.reply_to,
+                "preview_text": self.mail_preview,
+            },
+            "content_type": "multichannel",
+        }
+
+    @classmethod
+    def init_from_newsletter(cls, newsletter: Newsletter):
+        config = io.get_mailing_config()
+        config["group_id"] = newsletter.group_id
+        config["issue_number"] = newsletter.info.issue_number
+        config["date"] = newsletter.info.date
+        config["html"] = newsletter.html
+        config["mc_group_id"] = config["mc_group_interest_values"][newsletter.group_id]
+        config["mail_preview"] = newsletter.info.summary
+        return cls(**config)
+
+    def create(self) -> None:
+        self.mc_id = mailing.create_campaign(self)
+
+    def set_html(self) -> None:
+        mailing.set_campaign_html(self.mc_id, self.html)
+
+    def send(self) -> None:
+        mailing.send_campaign(self.mc_id)
+
+    def send_test(self) -> None:
+        mailing.send_campaign_test(self.mc_id, self.test_emails)
