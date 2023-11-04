@@ -6,13 +6,14 @@
 .env
 
 # Dev
-dev.py
+dev/
 
 # Data
 data/*.json
 data/transcripts/*.json
 data/summaries/*.json
 data/stories/*.json
+data/newsletters/*.json
 data/html/build/*.html
 
 
