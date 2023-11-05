@@ -138,6 +138,7 @@ class NewsletterInfoP(Protocol):
     date: pendulum.DateTime
     name: str
     file_name: str
+    read_times: list[int]
     summary: str
     stories: list[StoryP]
 
@@ -145,6 +146,7 @@ class NewsletterInfoP(Protocol):
 class NewsletterP(Protocol):
     info: NewsletterInfoP
     group_id: UserGroup
+    read_time: int
     html: str
 
 

@@ -1,10 +1,14 @@
+import pendulum
+
 from inews.infra import io
 from inews.infra.types import NewsletterP, StoryP, UserGroup
 
 
-def build_summary_block(summary: str):
+def build_summary_block(summary: str, read_time: int):
     newsletter_summary_block = io.read_html_template("newsletter_summary_block")
-    return newsletter_summary_block.replace("[INEWS:NEWSLETTER_SUMMARY]", summary)
+    read_time_display = pendulum.duration(seconds=read_time)
+    display_text = f"{summary}\n ({read_time_display.minutes} min read)"
+    return newsletter_summary_block.replace("[INEWS:NEWSLETTER_SUMMARY]", display_text)
 
 
 def build_story_block(group_id: UserGroup, story: StoryP, aligned: str = "left"):
@@ -42,7 +46,7 @@ def build_credits_block():
 
 def create_newsletter(newsletter: NewsletterP):
     content = ""
-    content += build_summary_block(newsletter.info.summary)
+    content += build_summary_block(newsletter.info.summary, newsletter.read_time)
     content += build_spacer_block()
 
     for idx, story in enumerate(newsletter.info.stories):

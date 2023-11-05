@@ -98,7 +98,8 @@ def build_newsletters(today: pendulum.DateTime) -> list[Newsletter]:
     print("Building all newsletter versions")
     newsletters = []
     for group_id in tqdm(data_config["user_groups"]):
-        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
+        read_time = newsletter_info.read_times[group_id]
+        newsletter = Newsletter(info=newsletter_info, group_id=group_id, read_time=read_time)
         newsletter.build_html()
         newsletter.save_html_build()
         newsletters.append(newsletter)

@@ -2,6 +2,7 @@ from functools import cached_property
 from pathlib import Path
 
 import pendulum
+import readtime
 from pydantic import BaseModel, Field, computed_field
 from tqdm import tqdm
 from youtube_transcript_api._transcripts import Transcript
@@ -248,6 +249,20 @@ class NewsletterInfo(BaseModel):
     def file_name(self) -> Path:
         return Path(f"issue_{self.issue_number:04}.json")
 
+    @computed_field
+    @cached_property
+    def read_times(self) -> list[int]:
+        read_times = []
+        for group_idx, _ in enumerate(data_config["user_groups"]):
+            user_group_read_time = 0
+            for story in self.stories:
+                text_to_read = story.title + story.short + story.user_stories[group_idx].user_story
+                user_group_read_time += readtime.of_text(text_to_read).seconds
+
+            read_times.append(user_group_read_time)
+
+        return read_times
+
     summary: str = ""
     stories: list[Story]
 
@@ -259,6 +274,7 @@ class NewsletterInfo(BaseModel):
 class Newsletter(BaseModel):
     info: NewsletterInfo
     group_id: UserGroup
+    read_time: int
     html: str = ""
 
     @computed_field
