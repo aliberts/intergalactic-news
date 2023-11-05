@@ -1,4 +1,3 @@
-from datetime import datetime
 from pprint import pformat
 from typing import Annotated, Any, Callable, Literal, Protocol
 
@@ -91,7 +90,7 @@ UserGroup = Literal[0, 1, 2]
 class VideoInfoP(Protocol):
     id: VideoID
     title: str
-    date: datetime
+    date: pendulum.DateTime
     duration: str
     thumbnail_url: str
 
@@ -136,7 +135,7 @@ class StoryP(Protocol):
 
 class NewsletterInfoP(Protocol):
     issue_number: int
-    date: datetime
+    date: pendulum.DateTime
     name: str
     file_name: str
     summary: str
