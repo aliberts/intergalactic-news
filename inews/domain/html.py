@@ -32,6 +32,14 @@ def build_divider_block():
     return io.read_html_template("divider_block")
 
 
+def build_large_divider_block():
+    return io.read_html_template("large_divider_block")
+
+
+def build_credits_block():
+    return io.read_html_template("credits_block")
+
+
 def create_newsletter(newsletter: NewsletterP):
     content = ""
     content += build_summary_block(newsletter.info.summary)
@@ -42,6 +50,9 @@ def create_newsletter(newsletter: NewsletterP):
         content += build_story_block(newsletter.group_id, story, alignment)
         if idx < len(newsletter.info.stories) - 1:
             content += build_divider_block()
+
+    content += build_large_divider_block()
+    content += build_credits_block()
 
     newsletter_template = io.read_html_template("newsletter")
     newsletter = newsletter_template.replace("[INEWS:CONTENT_PLACEHOLDER]", content)
