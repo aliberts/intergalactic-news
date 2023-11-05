@@ -299,7 +299,7 @@ class MCCampaign(BaseModel):
     @computed_field
     @cached_property
     def mail_subject(self) -> str:
-        return f"Intergalactic News #{self.issue_number:04} - {self.date.date()}"
+        return f"Intergalactic News #{self.issue_number} - {self.date.date()}"
 
     @computed_field
     @cached_property
