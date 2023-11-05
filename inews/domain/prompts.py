@@ -1,27 +1,26 @@
-from datetime import datetime
+import pendulum
 
 SYSTEM_PROMPT = f"""You are ChatGPT, a large language model
 trained by OpenAI, based on the GPT-3.5 architecture.
 Knowledge cutoff: 2021-09
-Current date: {datetime.now().date()}"""
+Current date: {pendulum.now().date()}"""
 
-SCIENCE_GROUP_TO_PROMPT = [
+
+GROUP_TO_PROMPT = [
     "a beginner",
     "an average",
     "an expert",
 ]
 
-BASE_SUMMARY = """The following is the transcript of a
-youtube video by youtube channel {channel_name}. This is a channel that talks
-mainly about astronomy and astrophysics and relevant news in these fields.
 
-The title of the video is "{video_title}".
+BASE_SUMMARY = """You will be given the transcript of a youtube video titled
+"{video_title}" by youtube channel {channel_name}.
 
-Write an exhaustive summary of this video that is detailed, thorough,
-in-depth and complex, while maintaining clarity and conciseness. Incorporate
-main ideas and essential information, eliminating extraneous language and
-focusing on critical aspects. Rely strictly on the provided text, without
-including external information.
+Write an exhaustive summary of this video that is detailed, thorough, in-depth
+and complex, while maintaining clarity and conciseness. Incorporate main ideas
+and essential information, eliminating extraneous language and focusing on
+critical aspects. Rely strictly on the provided text, without including external
+information.
 
 Transcript:
 {transcript}
@@ -29,19 +28,16 @@ Transcript:
 Your detailled summary:"""
 
 
-TOPICS = """The following is a summarized transcript
-of a youtube video by youtube channel {channel_name}. This is a channel that
-talks mainly about astronomy and astrophysics and relevant news in these fields.
-
-The title of the video is "{video_title}".
+TOPICS = """You will be given the transcript of a youtube video titled
+"{video_title}" by youtube channel {channel_name}.
 
 Write {number_of_topics} words describing the general topic of the video.
 
-You will give your answer in the form of a comma-separated list with only the 3 words
-you chose and nothing else. THIS IS VERY IMPORTANT.
+You will give your answer in the form of a comma-separated list with only the 3
+words you chose and nothing else. THIS IS VERY IMPORTANT.
 
-For example, if a video talks about the lastest iPhone release, your answer should be:
-Technology, Apple, iPhone
+For example, if a video talks about the lastest iPhone release, your answer
+should be: Technology, Apple, iPhone
 
 Summarized transcript:
 {summary}
@@ -58,29 +54,27 @@ describing a common topic. The list will look like this:
 
 ...
 
-For each item in this list, your task is to anwser "yes" or "no" to the following question:
-Does the topic fall into any of the categories Astronomy, Astrophysics, Physics or Space Science ?
+For each item in this list, your task is to anwser "yes" or "no" to the
+following question: Does the topic fall into any of the categories Astronomy,
+Astrophysics, Physics or Space Science ?
 
-You will give your answer in the form of a comma-separated list with only "yes" or
-"no" values and nothing else. For example, if you are
-given 10 different items and you choose to answer "yes" to items number 1, 4, 5 and 9,
-your answer should be: "Yes,No,No,Yes,Yes,No,No,No,Yes,No"
+You will give your answer in the form of a comma-separated list with only "yes"
+or "no" values and nothing else. For example, if you are given 10 different
+items and you choose to answer "yes" to items number 1, 4, 5 and 9, your answer
+should be: "Yes,No,No,Yes,Yes,No,No,No,Yes,No"
 
 List of common topics:
 {topics}
 Your answer:"""
 
 
-SHORT_STORY = """The following is a summarized transcript
-of a youtube video by youtube channel {channel_name}. This is a channel that
-talks mainly about astronomy and astrophysics and relevant news in these fields.
+SHORT_STORY = """You will be given the summarized transcript
+of a youtube video titled "{video_title}" by youtube channel {channel_name}.
 
-The title of the video is "{video_title}".
-
-Write a very short summary of this video. The length of your summary should
-not exceed 3 sentences. The language should be neutral and factual.
-
-Whenever you refer to the video in your answer, refer to it as "this story" instead of "this video".
+Your task is to write a very short summary of this video. The length of your
+summary should not exceed 3 sentences. The language should be entice the reader
+to know more about it while remaining factual. Do not refer to the video and
+relate the facts directly.
 
 Summarized transcript:
 {summary}
@@ -88,15 +82,12 @@ Summarized transcript:
 Your short summary:"""
 
 
-TITLE_STORY = """The following is a summarized transcript
-of a youtube video by youtube channel {channel_name}. This is a channel that
-talks mainly about astronomy and astrophysics and relevant news in these fields.
+TITLE_STORY = """You will be given the summarized transcript
+of a youtube video titled "{video_title}" by youtube channel {channel_name}.
 
-The title of the video is "{video_title}".
-
-Write an alternative title to this video that fully conveys the topic of the video.
-The language should be neutral, factual and not clickbaiting.
-Do not add quotation marks arround your title.
+Your task is to write an alternative title to this video that fully conveys the
+topic of the video. The language should be neutral, factual and not
+clickbaiting. Do not add quotation marks arround your title.
 
 Summarized transcript:
 {summary}
@@ -104,19 +95,14 @@ Summarized transcript:
 Your alternative title:"""
 
 
-USER_STORY = """The following is a summarized transcript
-of a youtube video by youtube channel {channel_name}. This is a channel that
-talks mainly about astronomy and astrophysics and relevant news in these fields.
+USER_STORY = """You will be given the summarized transcript
+of a youtube video titled "{video_title}" by youtube channel {channel_name}.
 
-The title of the video is "{video_title}".
-
-Adapt this to a short summary (3-4 paragraphs) of this transcript, intended to
-be read and understood by someone with {user_science_cat}-level scientific
-background. The language should be neutral and tailored for this specific
-audience. At the end, explain why the topic of the video is relevant to someone
-having an interest in astrophysics, astronomy or astronautics. Whenever you
-refer to the video in your answer, refer to it as "this story" instead of "this
-video".
+Your task is to adapt this to a short summary (2-3 paragraphs maximum) of this
+transcript, intended to be read and understood by someone with
+{user_science_cat}-level scientific background. The language should be neutral
+and tailored for this specific audience. Do not refer to the video and relate
+the facts directly.
 
 Summarized transcript:
 {summary}
@@ -124,11 +110,9 @@ Summarized transcript:
 Your summary tailored for the given audience:"""
 
 
+# TODO: testing
 USER_STORY_ALL = """You will be given the summarized transcript
-of a youtube video by youtube channel {channel_name}. This is a channel that
-talks mainly about astronomy and astrophysics and relevant news in these fields.
-
-The title of the video is "{video_title}".
+of a youtube video titled "{video_title}" by youtube channel {channel_name}.
 
 Your task is to adapt this summary to be understood by 3 different audiences in
 terms of scientific background: beginners, intermediates and experts. For each
@@ -152,7 +136,6 @@ Summarized transcript:
 Your answer:"""
 
 
-# TODO
 NEWSLETTER_SUMMARY = """You are writing a newsletter about some articles.
 You will be given a numbered list of article's title and summary.
 The list will look like this:
@@ -167,9 +150,9 @@ The list will look like this:
 
 Your task is to write the summary of that newsletter that will serve as an
 introdution to the rest of the content. Since it's an introduction, it must be
-very brief and just provide a brief overview to the reader of what's in the
+very brief and just provide the reader with a glimpse of what's in the
 newsletter.
 
 List of titles and summaries:
 {titles_and_shorts}
-Your answer:"""
+Your summary:"""

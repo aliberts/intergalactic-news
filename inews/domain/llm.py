@@ -48,7 +48,7 @@ def generate_title_story_prompt(summary: SummaryP) -> str:
 
 def generate_user_story_prompt(summary: SummaryP, user_group: UserGroup) -> str:
     return prompts.USER_STORY.format(
-        user_science_cat=prompts.SCIENCE_GROUP_TO_PROMPT[user_group],
+        user_science_cat=prompts.GROUP_TO_PROMPT[user_group],
         video_title=summary.video_info.title,
         channel_name=summary.channel_info.name,
         summary=summary.base,
@@ -136,7 +136,7 @@ def get_title_summary(summary: SummaryP) -> str:
 def get_user_story(summary: SummaryP, user_group: UserGroup) -> str:
     if DEBUG:
         return (
-            f"This is a user story for a user with {prompts.SCIENCE_GROUP_TO_PROMPT[user_group]}"
+            f"This is a user story for a user with {prompts.GROUP_TO_PROMPT[user_group]}"
             + "-level scientific background"
         )
     prompt = generate_user_story_prompt(summary, user_group)
