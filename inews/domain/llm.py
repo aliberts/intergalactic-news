@@ -1,4 +1,5 @@
 from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tqdm import tqdm
 
 from inews.domain import preprocessing, prompts
 from inews.infra import apis, io
@@ -87,7 +88,7 @@ def get_model_response(prompt: str) -> str:
     ]
     messages_tokens_count = preprocessing.count_tokens_from_messages(messages)
     model = "gpt-3.5-turbo" if messages_tokens_count < WINDOW_THRESHOLD else "gpt-3.5-turbo-16k"
-    print(f"tokens: {messages_tokens_count}, using {model}")
+    tqdm.write(f"tokens: {messages_tokens_count}, using {model}")
 
     completion = chat_completion(
         model=model,

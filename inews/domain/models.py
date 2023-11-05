@@ -85,7 +85,7 @@ class Channels(RootModelList):
         return root
 
     def update_recent_videos(self) -> None:
-        print("Updating channels recent videos")
+        tqdm.write("Updating channels recent videos")
         for channel in tqdm(self.root):
             channel.update_recent_videos()
 
