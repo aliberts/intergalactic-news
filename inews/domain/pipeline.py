@@ -2,7 +2,6 @@ import warnings
 from pathlib import Path
 
 import pendulum
-from pendulum import DateTime
 from tqdm import tqdm
 
 from inews.domain import llm
@@ -83,6 +82,51 @@ def run_mailing():
             mc_campaign.send()
 
 
+def build_newsletters(today: pendulum.DateTime) -> list[Newsletter]:
+    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
+    stories.sort(key=lambda x: x.video_info.date, reverse=True)
+
+    if DEBUG:
+        summary = "This is a summary"
+    else:
+        print("Getting newsletter summary")
+        summary = llm.get_newsletter_summary(stories)
+
+    newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
+    newsletter_info.save()
+
+    print("Building all newsletter versions")
+    newsletters = []
+    for group_id in tqdm(data_config["user_groups"]):
+        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
+        newsletter.build_html()
+        newsletter.save_html_build()
+        newsletters.append(newsletter)
+
+    return newsletters
+
+
+def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
+    selection = llm.get_stories_selection_from_topics(summaries)
+
+    try:
+        relevant_summaries = [
+            summary
+            for (summary, include) in zip(summaries, selection, strict=False)
+            if include == "yes"
+        ]
+        if len(selection) < len(summaries):
+            warnings.warn(
+                "Story selection incomplete, some stories could be missing.", stacklevel=1
+            )
+
+    except ValueError:
+        warnings.warn("Stories could not be selected, every story will be included.", stacklevel=1)
+        relevant_summaries = summaries
+
+    return relevant_summaries
+
+
 def build_videos_from_channels(channels: Channels, use_local_files: bool = True) -> list[Video]:
     videos = []
     for channel in channels:
@@ -121,47 +165,8 @@ def get_stories_from_data_folder(data_folder: Path) -> list[Story]:
     for file_path in data_folder.rglob("*.json"):
         json_data = io.load_from_json_file(file_path)
         story = Story.model_validate(json_data)
+        if story.is_too_old():
+            continue
         story.allow_requests = False
         stories.append(story)
     return stories
-
-
-def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
-    selection = llm.get_stories_selection_from_topics(summaries)
-
-    try:
-        relevant_summaries = [
-            summary
-            for (summary, include) in zip(summaries, selection, strict=False)
-            if include == "yes"
-        ]
-        if len(selection) < len(summaries):
-            warnings.warn(
-                "Story selection incomplete, some stories could be missing.", stacklevel=1
-            )
-
-    except ValueError:
-        warnings.warn("Stories could not be selected, every story will be included.", stacklevel=1)
-        relevant_summaries = summaries
-
-    return relevant_summaries
-
-
-def build_newsletters(today: DateTime) -> list[Newsletter]:
-    stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
-
-    print("Getting newsletter summary")
-    summary = llm.get_newsletter_summary(stories)
-
-    newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
-    newsletter_info.save()
-
-    print("Building all newsletter versions")
-    newsletters = []
-    for group_id in tqdm(data_config["user_groups"]):
-        newsletter = Newsletter(info=newsletter_info, group_id=group_id)
-        newsletter.build_html()
-        newsletter.save_html_build()
-        newsletters.append(newsletter)
-
-    return newsletters
