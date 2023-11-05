@@ -217,6 +217,11 @@ class Story(BaseModel):
         self.user_stories = user_stories
         self.save()
 
+    def is_too_old(self) -> bool:
+        max_days_old = data_config["newsletter_stories_days_old"]
+        story_date = self.video_info.date
+        return (pendulum.today() - story_date).days >= max_days_old
+
     def save(self) -> None:
         file_path = io.STORIES_LOCAL_PATH / io.get_file_name(self.video_info)
         io.save_to_json_file(self.model_dump(mode="json", exclude={"allow_requests"}), file_path)
