@@ -22,6 +22,7 @@ boto3 = "^1.28.71"
 mailchimp-marketing = "^3.0.80"
 tqdm = "^4.66.1"
 tenacity = "^8.2.3"
+readtime = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
