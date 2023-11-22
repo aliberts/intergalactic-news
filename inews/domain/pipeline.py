@@ -62,7 +62,7 @@ def run_mailing():
     timezone = data_config["timezone"]
     today = pendulum.today(tz=timezone)
 
-    if today.day_of_week != 3 and not DEBUG:
+    if today.day_of_week != data_config["send_weekday"] and not DEBUG:
         return
 
     newsletters = build_newsletters(today)
