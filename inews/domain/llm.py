@@ -8,7 +8,7 @@ from inews.infra.types import StoryP, SummaryP, UserGroup, VideoP
 data_config = io.get_data_config()
 openai_api = apis.get_openai()
 
-WINDOW_THRESHOLD = 3500
+MODEL = "gpt-3.5-turbo"
 TEMPERATURE = 0.7
 
 DEBUG = False
@@ -87,11 +87,10 @@ def get_model_response(prompt: str) -> str:
         {"role": "user", "content": prompt},
     ]
     messages_tokens_count = preprocessing.count_tokens_from_messages(messages)
-    model = "gpt-3.5-turbo" if messages_tokens_count < WINDOW_THRESHOLD else "gpt-3.5-turbo-16k"
-    tqdm.write(f"tokens: {messages_tokens_count}, using {model}")
+    tqdm.write(f"tokens: {messages_tokens_count}, using {MODEL}")
 
     completion = chat_completion(
-        model=model,
+        model=MODEL,
         temperature=TEMPERATURE,
         messages=messages,
     )
