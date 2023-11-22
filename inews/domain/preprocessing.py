@@ -2,7 +2,7 @@ import tiktoken
 from unidecode import unidecode
 
 
-def format_transcript(raw_transcript):
+def format_transcript(raw_transcript: list[dict]) -> str:
     transcript = " ".join(line["text"] for line in raw_transcript)
     transcript = unidecode(transcript).replace("\n", " ").replace("[Music]", "")
     return " ".join(transcript.split())
@@ -13,7 +13,7 @@ def count_tokens(text: str) -> int:
     return len(encoding.encode(text))
 
 
-def count_tokens_from_messages(messages, model="gpt-3.5-turbo-0613"):
+def count_tokens_from_messages(messages: list[dict], model: str = "gpt-3.5-turbo-0613") -> int:
     """Return the number of tokens used by a list of messages for api calls.
     https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     """
