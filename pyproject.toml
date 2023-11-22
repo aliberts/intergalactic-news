@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "intergalactic-news"
 version = "0.1.0"
-description = "Get the latest news from intergalactic space."
+description = "Get the latest news from intergalactic space 🪐"
+license = "BSD-3-Clause"
 authors = ["Simon Alibert <alibert.sim@gmail.com>"]
-repository = "https://github.com/aliberts/intergalactic-news"
 readme = "README.md"
+repository = "https://github.com/aliberts/intergalactic-news"
 packages = [{include = "inews"}]
 
 [tool.poetry.dependencies]
