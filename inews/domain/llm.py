@@ -8,7 +8,7 @@ from inews.infra.types import StoryP, SummaryP, UserGroup, VideoP
 data_config = io.get_data_config()
 openai_api = apis.get_openai()
 
-MODEL = "gpt-3.5-turbo"
+MODEL = "gpt-3.5-turbo-1106"
 TEMPERATURE = 0.7
 
 DEBUG = False
