@@ -40,11 +40,17 @@ If you'd like to see content from other channels, please tell us as well.
 
 ## Roadmap
 
-- [x] Newsletter automation
-- [ ] Add an example to repo
-- [ ] Deploy to aws
+- [x] Newsletter generation
+    - [x] Transcripts
+    - [x] Prompt chain
+    - [x] html build
+- [x] Mailing automation
+    - [x] User groups
+    - [x] Online subscription
+    - [ ] Different update frequencies (e.g. 2/week or 1/month)
+- [ ] Deploy
+- [ ] Showcase an example on this repo
 - [ ] Improve prompts
-- [ ] Allow for different update frequencies (e.g. every 3 days or 1 per month)
 
 ## Disclaimer
 
