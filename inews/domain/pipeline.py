@@ -22,7 +22,9 @@ DEBUG = True
 
 
 def run_data():
-    channels = Channels.init_from_file(io.CHANNELS_LOCAL_FILE)
+    io.pull_data_from_bucket()
+
+    channels = build_channels(use_local_files=True)
     channels.update_recent_videos()
     channels.save()
 
@@ -57,6 +59,8 @@ def run_data():
         story.get_user_groups_from_summary(summary)
         story.save()
 
+    io.push_data_to_bucket()
+
 
 def run_mailing():
     timezone = data_config["timezone"]
@@ -80,6 +84,8 @@ def run_mailing():
             mc_campaign.send_test()
         else:
             mc_campaign.send()
+
+    io.push_issues_to_bucket()
 
 
 def build_newsletters(today: pendulum.DateTime) -> list[Newsletter]:
@@ -126,6 +132,16 @@ def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
         relevant_summaries = summaries
 
     return relevant_summaries
+
+
+def build_channels(use_local_files: bool = True) -> Channels:
+    config_channel_ids = io.get_config_channel_ids()
+    if io.CHANNELS_LOCAL_FILE.is_file() and use_local_files:
+        channels = Channels.init_from_file(io.CHANNELS_LOCAL_FILE)
+        channels.get_new_channels(config_channel_ids)
+    else:
+        channels = Channels.init_from_api_with_ids(config_channel_ids)
+    return channels
 
 
 def build_videos_from_channels(channels: Channels, use_local_files: bool = True) -> list[Video]:

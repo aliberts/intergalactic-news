@@ -71,19 +71,26 @@ class Channels(RootModelList):
 
     @classmethod
     def init_from_file(cls, file_path: Path):
-        # Getting local channels file
         json_data = io.load_from_json_file(file_path)
-        root = cls.model_validate(json_data)
+        return cls.model_validate(json_data)
 
-        # Adding new channels from config if there are any
-        config_channel_ids = io.get_config_channel_ids()
-        channel_ids = [channel.info.id for channel in root]
-        new_channel_ids = [id for id in config_channel_ids if id not in channel_ids]
+    @classmethod
+    def init_from_api_with_ids(cls, channels_id: list[str]):
+        channels = []
+        channel_infos = youtube.get_channels_info(channels_id)
+        for channel_info in channel_infos:
+            info = ChannelInfo.model_validate(channel_info)
+            channels.append(Channel(info=info))
+        return cls.model_validate(channels)
+
+    # Adding new channels from config if there are any
+    def get_new_channels(self, channel_ids: list[ChannelID]):
+        current_channel_ids = [channel.info.id for channel in self.root]
+        new_channel_ids = [id for id in channel_ids if id not in current_channel_ids]
         new_channel_infos = youtube.get_channels_info(new_channel_ids)
         for channel_info in new_channel_infos:
             info = ChannelInfo.model_validate(channel_info)
-            root.append(Channel(info=info))
-        return root
+            self.root.append(Channel(info=info))
 
     def update_recent_videos(self) -> None:
         tqdm.write("Updating channels recent videos")
