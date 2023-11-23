@@ -53,7 +53,19 @@ def _get_mailing_list(members_list_id: str) -> list[dict]:
     except ApiClientError as error:
         print(error)
 
-    return response["members"]
+    keys = [
+        "id",
+        "email_address",
+        "status",
+        "timestamp_opt",
+        "interests",
+        "location",
+    ]
+    subscribers = []
+    for subscriber in response["members"]:
+        subscribers.append({key: subscriber[key] for key in keys})
+
+    return subscribers
 
 
 def _get_campaigns() -> list[dict]:
