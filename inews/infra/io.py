@@ -1,19 +1,31 @@
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import boto3
 import yaml
+from botocore.exceptions import ClientError
+from dotenv import load_dotenv
 
 from inews.infra.types import ChannelID, VideoInfoP
 
-s3 = boto3.resource("s3")
+load_dotenv()
+
+s3 = boto3.resource(
+    "s3",
+    region_name=os.environ["AWS_REGION"],
+    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+)
 
 # S3
 BUCKET = "intergalactic-news"
 CHANNELS_S3_FILE = "channels_state.json"
 TRANSCRIPTS_S3_PATH = "transcripts/"
 SUMMARIES_S3_PATH = "summaries/"
+STORIES_S3_PATH = "stories/"
+ISSUES_S3_PATH = "issues/"
 
 # Config
 CHANNELS_ID_FILE = Path("config/channels_id.yaml")
@@ -51,25 +63,47 @@ def clear_local() -> None:
     for summary_file_path in SUMMARIES_LOCAL_PATH.rglob("*.json"):
         summary_file_path.unlink()
 
+    for story_file_path in STORIES_LOCAL_PATH.rglob("*.json"):
+        story_file_path.unlink()
 
-def pull_from_bucket() -> None:
+    for newsletter_file_path in NEWSLETTERS_LOCAL_PATH.rglob("*.json"):
+        newsletter_file_path.unlink()
+
+    for html_file_path in HTML_BUILD_PATH.rglob("*.html"):
+        html_file_path.unlink()
+
+
+def download_file_from_bucket(bucket, s3_path: str, local_path: Path) -> None:
+    try:
+        bucket.download_file(s3_path, local_path)
+    except ClientError:
+        return
+
+
+def pull_data_from_bucket() -> None:
     bucket = s3.Bucket(BUCKET)
-    bucket.download_file(CHANNELS_S3_FILE, CHANNELS_LOCAL_FILE)
+    download_file_from_bucket(bucket, CHANNELS_S3_FILE, CHANNELS_LOCAL_FILE)
 
     for object in bucket.objects.filter(Prefix=TRANSCRIPTS_S3_PATH):
         if object.key.endswith("json"):
             local_file_name = Path(object.key).name
             local_file_path = TRANSCRIPTS_LOCAL_PATH / local_file_name
-            bucket.download_file(object.key, local_file_path)
+            download_file_from_bucket(bucket, object.key, local_file_path)
 
     for object in bucket.objects.filter(Prefix=SUMMARIES_S3_PATH):
         if object.key.endswith("json"):
             local_file_name = Path(object.key).name
             local_file_path = SUMMARIES_LOCAL_PATH / local_file_name
-            bucket.download_file(object.key, local_file_path)
+            download_file_from_bucket(bucket, object.key, local_file_path)
+
+    for object in bucket.objects.filter(Prefix=STORIES_S3_PATH):
+        if object.key.endswith("json"):
+            local_file_name = Path(object.key).name
+            local_file_path = STORIES_LOCAL_PATH / local_file_name
+            download_file_from_bucket(bucket, object.key, local_file_path)
 
 
-def push_to_bucket() -> None:
+def push_data_to_bucket() -> None:
     bucket = s3.Bucket(BUCKET)
     bucket.upload_file(CHANNELS_LOCAL_FILE, CHANNELS_S3_FILE)
 
@@ -80,6 +114,28 @@ def push_to_bucket() -> None:
     for summary_file_path in SUMMARIES_LOCAL_PATH.rglob("*.json"):
         s3_file_path = SUMMARIES_S3_PATH + summary_file_path.name
         bucket.upload_file(summary_file_path, s3_file_path)
+
+    for story_file_path in STORIES_LOCAL_PATH.rglob("*.json"):
+        s3_file_path = STORIES_S3_PATH + story_file_path.name
+        bucket.upload_file(story_file_path, s3_file_path)
+
+
+def pull_issues_from_bucket() -> None:
+    bucket = s3.Bucket(BUCKET)
+
+    for object in bucket.objects.filter(Prefix=ISSUES_S3_PATH):
+        if object.key.endswith("html"):
+            local_file_name = Path(object.key).name
+            local_file_path = HTML_BUILD_PATH / local_file_name
+            download_file_from_bucket(bucket, object.key, local_file_path)
+
+
+def push_issues_to_bucket() -> None:
+    bucket = s3.Bucket(BUCKET)
+
+    for issue_file_path in HTML_BUILD_PATH.rglob("*.html"):
+        s3_file_path = ISSUES_S3_PATH + issue_file_path.name
+        bucket.upload_file(issue_file_path, s3_file_path)
 
 
 def get_data_config() -> dict:
