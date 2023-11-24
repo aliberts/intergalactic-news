@@ -29,15 +29,20 @@ jobs:
       - name: Export requirements.txt
         run: poetry export -f requirements.txt --output requirements.txt --without-hashes
       - name: Configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.IAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: "eu-west-3"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build --platform linux/amd64 -t ${{ secrets.ECR_REGISTRY }}/inews:latest .
-          docker push ${{ secrets.ECR_REGISTRY }}/inews:latest
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/inews:latest .
+          docker push $ECR_REGISTRY/inews:latest
           aws lambda update-function-code \
             --function-name inews \
-            --image-uri ${{ secrets.ECR_REGISTRY }}/inews:latest > /dev/null
+            --image-uri $ECR_REGISTRY }}/inews:latest > /dev/null
