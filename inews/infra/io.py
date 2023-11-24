@@ -12,11 +12,15 @@ from inews.infra.types import ChannelID, VideoInfoP
 
 load_dotenv()
 
+session_token = os.environ["AWS_SESSION_TOKEN"] if "AWS_SESSION_TOKEN" in os.environ else None
+DATA_PATH = Path("/tmp") if "AWS_LAMBDA_FUNCTION_NAME" in os.environ else Path("data")
+
 s3 = boto3.resource(
     "s3",
     region_name=os.environ["AWS_REGION"],
     aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
     aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    aws_session_token=session_token,
 )
 
 # S3
@@ -33,15 +37,15 @@ DATA_CONFIG_FILE = Path("config/data.yaml")
 MAILING_CONFIG_FILE = Path("config/mailing.yaml")
 
 # Data
-CHANNELS_LOCAL_FILE = Path("data/channels_state.json")
-TRANSCRIPTS_LOCAL_PATH = Path("data/transcripts/")
-SUMMARIES_LOCAL_PATH = Path("data/summaries/")
-STORIES_LOCAL_PATH = Path("data/stories/")
-NEWSLETTERS_LOCAL_PATH = Path("data/newsletters/")
+CHANNELS_LOCAL_FILE = DATA_PATH / Path("channels_state.json")
+TRANSCRIPTS_LOCAL_PATH = DATA_PATH / Path("transcripts/")
+SUMMARIES_LOCAL_PATH = DATA_PATH / Path("summaries/")
+STORIES_LOCAL_PATH = DATA_PATH / Path("stories/")
+NEWSLETTERS_LOCAL_PATH = DATA_PATH / Path("newsletters/")
 
 # Html
-HTML_TEMPLATE_PATH = Path("data/html/templates/")
-HTML_BUILD_PATH = Path("data/html/build/")
+HTML_TEMPLATE_PATH = Path("inews/templates/")
+HTML_BUILD_PATH = DATA_PATH / Path("html/")
 
 
 def clear_bucket() -> None:
@@ -55,22 +59,19 @@ def clear_bucket() -> None:
 
 
 def clear_local() -> None:
-    CHANNELS_LOCAL_FILE.unlink()
-
-    for transcript_file_path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
-        transcript_file_path.unlink()
-
-    for summary_file_path in SUMMARIES_LOCAL_PATH.rglob("*.json"):
-        summary_file_path.unlink()
-
-    for story_file_path in STORIES_LOCAL_PATH.rglob("*.json"):
-        story_file_path.unlink()
-
-    for newsletter_file_path in NEWSLETTERS_LOCAL_PATH.rglob("*.json"):
-        newsletter_file_path.unlink()
+    for json_file_path in DATA_PATH.rglob("*.json"):
+        json_file_path.unlink()
 
     for html_file_path in HTML_BUILD_PATH.rglob("*.html"):
         html_file_path.unlink()
+
+
+def make_data_dirs():
+    TRANSCRIPTS_LOCAL_PATH.mkdir(parents=True, exist_ok=True)
+    SUMMARIES_LOCAL_PATH.mkdir(parents=True, exist_ok=True)
+    STORIES_LOCAL_PATH.mkdir(parents=True, exist_ok=True)
+    NEWSLETTERS_LOCAL_PATH.mkdir(parents=True, exist_ok=True)
+    HTML_BUILD_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def download_file_from_bucket(bucket, s3_path: str, local_path: Path) -> None:
