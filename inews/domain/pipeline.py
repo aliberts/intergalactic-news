@@ -15,13 +15,13 @@ from inews.domain.models import (
     Video,
 )
 from inews.infra import io
+from inews.infra.types import RunStatus
 
 data_config = io.get_data_config()
 
-DEBUG = True
 
-
-def run_data():
+def run_data(status: RunStatus):
+    io.make_data_dirs()
     io.pull_data_from_bucket()
 
     channels = build_channels(use_local_files=True)
@@ -62,16 +62,16 @@ def run_data():
     io.push_data_to_bucket()
 
 
-def run_mailing():
+def run_mailing(status: RunStatus):
     timezone = data_config["timezone"]
     today = pendulum.today(tz=timezone)
 
-    if today.day_of_week != data_config["send_weekday"] and not DEBUG:
+    if today.day_of_week != data_config["send_weekday"] and status is RunStatus.PROD:
         return
 
-    newsletters = build_newsletters(today)
+    newsletters = build_newsletters(today, status)
 
-    if DEBUG:
+    if status is RunStatus.TEST:
         newsletters = [newsletters[0]]
 
     print("Sending newsletters")
@@ -80,7 +80,7 @@ def run_mailing():
         mc_campaign.create()
         mc_campaign.set_html()
 
-        if DEBUG:
+        if status is RunStatus.TEST:
             mc_campaign.send_test()
         else:
             mc_campaign.send()
@@ -88,11 +88,11 @@ def run_mailing():
     io.push_issues_to_bucket()
 
 
-def build_newsletters(today: pendulum.DateTime) -> list[Newsletter]:
+def build_newsletters(today: pendulum.DateTime, status: RunStatus) -> list[Newsletter]:
     stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
     stories.sort(key=lambda x: x.video_info.date, reverse=True)
 
-    if DEBUG:
+    if status is RunStatus.TEST:
         summary = "This is a summary"
     else:
         print("Getting newsletter summary")

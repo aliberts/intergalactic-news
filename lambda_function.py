@@ -1,6 +1,8 @@
 from inews.domain import pipeline
+from inews.infra import utils
 
 
 def handler(event, context):
-    pipeline.run_data()
-    pipeline.run_mailing()
+    status = utils.validate_event(event)
+    pipeline.run_data(status)
+    pipeline.run_mailing(status)

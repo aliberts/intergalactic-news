@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from pprint import pformat
 from typing import Annotated, Any, Callable, Literal, Protocol
 
@@ -5,6 +6,11 @@ import pendulum
 from pydantic import GetJsonSchemaHandler, RootModel, StringConstraints
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
+
+
+class RunStatus(Enum):
+    PROD = auto()
+    TEST = auto()
 
 
 def pprint_repr(base_model):

@@ -1,9 +1,11 @@
 from inews.domain import pipeline
+from inews.infra.types import RunStatus
 
 
 def main():
-    pipeline.run_data()
-    pipeline.run_mailing()
+    satus = RunStatus.TEST
+    pipeline.run_data(satus)
+    pipeline.run_mailing(satus)
 
 
 if __name__ == "__main__":
