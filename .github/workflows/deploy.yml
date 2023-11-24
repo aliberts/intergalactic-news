@@ -37,13 +37,13 @@ jobs:
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4.0.1
         with:
-          role-to-assume: ${{ IAM_ROLE_ARN }}
+          role-to-assume: ${{ secrets.IAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: "eu-west-3"
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          docker build --platform linux/amd64 -t ${{ ECR_REGISTRY }}/inews:latest .
-          docker push ${{ ECR_REGISTRY }}/inews:latest
+          docker build --platform linux/amd64 -t ${{ secrets.ECR_REGISTRY }}/inews:latest .
+          docker push ${{ secrets.ECR_REGISTRY }}/inews:latest
           aws lambda update-function-code \
             --function-name inews \
-            --image-uri ${{ ECR_REGISTRY }}/inews:latest > /dev/null
+            --image-uri ${{ secrets.ECR_REGISTRY }}/inews:latest > /dev/null
