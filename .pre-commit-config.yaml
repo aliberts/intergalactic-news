@@ -36,6 +36,10 @@ repos:
         args:
           - "--check"
           - "--no-update"
+  - repo: https://github.com/mpalmer/action-validator
+    rev: v0.5.1
+    hooks:
+      - id: action-validator
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:

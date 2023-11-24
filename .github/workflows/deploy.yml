@@ -1,0 +1,49 @@
+name: Connect to AWS role, build and push to ECR
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: [ main ]
+
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read    # This is required for actions/checkout
+jobs:
+  ExportDependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v4
+      - name: Install poetry & poetry export
+        run: |
+          pipx install poetry
+          pipx inject poetry poetry-plugin-export
+      - name: Cache poetry
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+      - name: Export requirements.txt
+        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+  AssumeRoleAndPush:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v4
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.1
+        with:
+          role-to-assume: ${{ IAM_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: "eu-west-3"
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          docker build --platform linux/amd64 -t ${{ ECR_REGISTRY }}/inews:latest .
+          docker push ${{ ECR_REGISTRY }}/inews:latest
+          aws lambda update-function-code \
+            --function-name inews \
+            --image-uri ${{ ECR_REGISTRY }}/inews:latest > /dev/null
