@@ -1,0 +1,10 @@
+mc_list_id: 44b6731e59
+mc_group_interest_id: cc4602cade
+mc_group_interest_values:
+  - 9c6f9da51e  # beginner
+  - 11e3651139  # intermediate
+  - d069f73353  # expert
+reply_to: the.intergalactic.news@gmail.com
+from_name: Intergalactic News
+test_emails:
+  - alibert.sim@gmail.com
