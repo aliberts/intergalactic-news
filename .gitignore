@@ -11,13 +11,7 @@ dev/
 dev.py
 
 # Data
-data/*.json
-data/transcripts/*.json
-data/summaries/*.json
-data/stories/*.json
-data/newsletters/*.json
-data/html/build/*.html
-
+data/
 
 # Ruff
 .ruff_cache
@@ -33,7 +27,6 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
-!data/html/build
 develop-eggs/
 dist/
 downloads/
