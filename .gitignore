@@ -12,6 +12,9 @@ dev.py
 # Data
 data/
 
+# Requirements (for local builds)
+requirements.txt
+
 # Ruff
 .ruff_cache
 
