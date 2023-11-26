@@ -15,14 +15,16 @@ from inews.domain.models import (
     Video,
 )
 from inews.infra import io
-from inews.infra.types import RunStatus
+from inews.infra.types import RunEvent
 
 data_config = io.get_data_config()
 
 
-def run_data(status: RunStatus):
+def run_data(run: RunEvent):
     io.make_data_dirs()
-    io.pull_data_from_bucket()
+
+    if run.pull_from_bucket:
+        io.pull_data_from_bucket()
 
     channels = build_channels(use_local_files=True)
     channels.update_recent_videos()
@@ -40,38 +42,42 @@ def run_data(status: RunStatus):
     summaries = build_summaries_from_videos(videos, use_local_files=True)
     print("Getting summaries")
     for summary, video in tqdm(zip(summaries, videos, strict=True)):
-        summary.get_base_from_video(video)
+        summary.get_base_from_video(video, run)
         summary.save()
 
-        summary.get_topics()
+        summary.get_topics(run)
         summary.save()
 
     print("Selecting relevant stories")
-    summaries = select_relevant_summaries(summaries)
+    summaries = select_relevant_summaries(summaries, run)
     stories = build_stories_from_summaries(summaries, use_local_files=True)
 
     print("Building stories")
     for story, summary in tqdm(zip(stories, summaries, strict=True)):
-        story.get_short_from_summary(summary)
+        story.get_short_from_summary(summary, run)
         story.save()
-        story.get_title_from_summary(summary)
+        story.get_title_from_summary(summary, run)
         story.save()
-        story.get_user_groups_from_summary(summary)
+        story.get_user_groups_from_summary(summary, run)
         story.save()
 
-    io.push_data_to_bucket()
+    if run.push_to_bucket:
+        io.push_data_to_bucket()
 
 
-def run_mailing(status: RunStatus):
+def run_mailing(run: RunEvent):
     timezone = data_config["timezone"]
     today = pendulum.today(tz=timezone)
 
-    if today.day_of_week != data_config["send_weekday"] and status is RunStatus.PROD:
+    if today.day_of_week != data_config["send_weekday"] and not run.debug:
         return
 
-    newsletters = build_newsletters(today, status)
+    newsletters = build_newsletters(today, run)
 
-    if status is RunStatus.TEST:
+    if not (run.send or run.send_test):
+        return
+
+    if run.debug:
         newsletters = [newsletters[0]]
 
     print("Sending newsletters")
@@ -80,26 +86,28 @@ def run_mailing(status: RunStatus):
         mc_campaign.create()
         mc_campaign.set_html()
 
-        if status is RunStatus.TEST:
-            mc_campaign.send_test()
-        else:
+        if run.send:
             mc_campaign.send()
 
-    io.push_issues_to_bucket()
+        if run.send_test:
+            mc_campaign.send_test()
+
+    if run.push_to_bucket:
+        io.push_issues_to_bucket()
 
 
-def build_newsletters(today: pendulum.DateTime, status: RunStatus) -> list[Newsletter]:
+def build_newsletters(today: pendulum.DateTime, run: RunEvent) -> list[Newsletter]:
     stories = get_stories_from_data_folder(io.STORIES_LOCAL_PATH)
     stories.sort(key=lambda x: x.video_info.date, reverse=True)
 
-    if status is RunStatus.TEST:
-        summary = "This is a summary"
-    else:
-        print("Getting newsletter summary")
-        summary = llm.get_newsletter_summary(stories)
+    print("Getting newsletter summary")
+    summary = llm.get_newsletter_summary(stories, run)
 
     newsletter_info = NewsletterInfo(date=today, summary=summary, stories=stories)
     newsletter_info.save()
+
+    if run.push_to_bucket:
+        io.push_newsletters_to_bucket()
 
     print("Building all newsletter versions")
     newsletters = []
@@ -113,8 +121,8 @@ def build_newsletters(today: pendulum.DateTime, status: RunStatus) -> list[Newsl
     return newsletters
 
 
-def select_relevant_summaries(summaries: list[Summary]) -> list[Summary]:
-    selection = llm.get_stories_selection_from_topics(summaries)
+def select_relevant_summaries(summaries: list[Summary], run: RunEvent) -> list[Summary]:
+    selection = llm.get_stories_selection_from_topics(summaries, run)
 
     try:
         relevant_summaries = [

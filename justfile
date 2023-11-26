@@ -33,8 +33,10 @@ update-lambda: export-req login-ecr build-ecr tag-ecr push-ecr
            --function-name inews \
            --image-uri 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews:latest
 
-trigger-test:
-    curl "http://192.168.63.101:9000/2015-03-31/functions/function/invocations" -d '{"Status": "test"}'
+trigger-debug:
+    curl "http://192.168.63.101:9000/2015-03-31/functions/function/invocations" -d \
+        '{"debug": true, "dummy_llm_requests": true, "send": false, "send_test": false, "pull_from_bucket": true, "push_to_bucket": false}'
 
-trigger-prod:
-    curl "http://192.168.63.101:9000/2015-03-31/functions/function/invocations" -d '{"Status": "prod"}'
+trigger-dry-run:
+    curl "http://192.168.63.101:9000/2015-03-31/functions/function/invocations" -d \
+        '{"debug": true, "dummy_llm_requests": false, "send": false, "send_test": true, "pull_from_bucket": true, "push_to_bucket": false}'

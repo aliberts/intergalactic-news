@@ -13,6 +13,7 @@ from inews.infra.types import (
     ChannelID,
     PendulumDateTime,
     RootModelList,
+    RunEvent,
     UserGroup,
     VideoID,
     pprint_repr,
@@ -162,13 +163,13 @@ class Summary(BaseModel):
     def init_from_video(cls, video: Video):
         return cls(video_infos=video.info, channel_infos=video.channel_info)
 
-    def get_base_from_video(self, video: Video) -> None:
+    def get_base_from_video(self, video: Video, run: RunEvent) -> None:
         if self.allow_requests:
-            self.base = llm.get_base_summary(self, video)
+            self.base = llm.get_base_summary(self, video, run)
 
-    def get_topics(self) -> None:
+    def get_topics(self, run: RunEvent) -> None:
         if self.allow_requests:
-            self.topics = llm.get_topics(self)
+            self.topics = llm.get_topics(self, run)
 
     def save(self) -> None:
         file_path = io.SUMMARIES_LOCAL_PATH / io.get_file_name(self.video_info)
@@ -206,21 +207,21 @@ class Story(BaseModel):
     def init_from_summary(cls, summary: Summary):
         return cls(video_infos=summary.video_info, channel_infos=summary.channel_info)
 
-    def get_short_from_summary(self, summary: Summary) -> None:
+    def get_short_from_summary(self, summary: Summary, run: RunEvent) -> None:
         if self.allow_requests:
-            self.short = llm.get_short_summary(summary)
+            self.short = llm.get_short_summary(summary, run)
 
-    def get_title_from_summary(self, summary: Summary) -> None:
+    def get_title_from_summary(self, summary: Summary, run: RunEvent) -> None:
         if self.allow_requests:
-            self.title = llm.get_title_summary(summary)
+            self.title = llm.get_title_summary(summary, run)
 
-    def get_user_groups_from_summary(self, summary: Summary) -> None:
+    def get_user_groups_from_summary(self, summary: Summary, run: RunEvent) -> None:
         if not self.allow_requests:
             return
 
         user_stories = []
         for group_id in data_config["user_groups"]:
-            user_summary = llm.get_user_story(summary, group_id)
+            user_summary = llm.get_user_story(summary, group_id, run)
             user_stories.append(UserStory(user_group=group_id, user_story=user_summary))
         self.user_stories = user_stories
         self.save()

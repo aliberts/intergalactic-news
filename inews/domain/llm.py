@@ -3,15 +3,13 @@ from tqdm import tqdm
 
 from inews.domain import preprocessing, prompts
 from inews.infra import apis, io
-from inews.infra.types import StoryP, SummaryP, UserGroup, VideoP
+from inews.infra.types import RunEvent, StoryP, SummaryP, UserGroup, VideoP
 
 data_config = io.get_data_config()
 openai_api = apis.get_openai()
 
 MODEL = "gpt-3.5-turbo-1106"
 TEMPERATURE = 0.7
-
-DEBUG = False
 
 
 def generate_base_summary_prompt(summary: SummaryP, video: VideoP) -> str:
@@ -80,8 +78,6 @@ def chat_completion(model: str, temperature: float, messages: list[dict]) -> dic
 
 
 def get_model_response(prompt: str) -> str:
-    if DEBUG:
-        return "This is a model response"
     messages = [
         {"role": "system", "content": prompts.SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
@@ -98,43 +94,43 @@ def get_model_response(prompt: str) -> str:
     return completion.choices[0].message.content
 
 
-def get_base_summary(summary: SummaryP, video: VideoP) -> str:
-    if DEBUG:
+def get_base_summary(summary: SummaryP, video: VideoP, run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return "This is a base summary"
     prompt = generate_base_summary_prompt(summary, video)
     return get_model_response(prompt)
 
 
-def get_topics(summary: SummaryP) -> str:
-    if DEBUG:
+def get_topics(summary: SummaryP, run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return "This is a list of topics"
     prompt = generate_topics_prompt(summary)
     return get_model_response(prompt)
 
 
-def get_stories_selection_from_topics(summaries: list[SummaryP]) -> list[str]:
-    if DEBUG:
+def get_stories_selection_from_topics(summaries: list[SummaryP], run: RunEvent) -> list[str]:
+    if run.dummy_llm_requests:
         return ["no", "yes", "no", "yes"]
     prompt = generate_stories_selection_from_topics_prompt(summaries)
     return get_model_response(prompt).lower().split(",")
 
 
-def get_short_summary(summary: SummaryP) -> str:
-    if DEBUG:
+def get_short_summary(summary: SummaryP, run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return "This is a short story"
     prompt = generate_short_story_prompt(summary)
     return get_model_response(prompt)
 
 
-def get_title_summary(summary: SummaryP) -> str:
-    if DEBUG:
+def get_title_summary(summary: SummaryP, run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return "This is a title story"
     prompt = generate_title_story_prompt(summary)
     return get_model_response(prompt)
 
 
-def get_user_story(summary: SummaryP, user_group: UserGroup) -> str:
-    if DEBUG:
+def get_user_story(summary: SummaryP, user_group: UserGroup, run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return (
             f"This is a user story for a user with {prompts.GROUP_TO_PROMPT[user_group]}"
             + "-level scientific background"
@@ -143,8 +139,8 @@ def get_user_story(summary: SummaryP, user_group: UserGroup) -> str:
     return get_model_response(prompt)
 
 
-def get_newsletter_summary(stories: list[StoryP]) -> str:
-    if DEBUG:
+def get_newsletter_summary(stories: list[StoryP], run: RunEvent) -> str:
+    if run.dummy_llm_requests:
         return "This is a newsletter summary"
     prompt = generate_newsletter_summary_prompt(stories)
     return get_model_response(prompt)
