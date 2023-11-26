@@ -3,23 +3,28 @@
 # Get the latest news from intergalactic space 🪐
 
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
-![Python Versions](https://img.shields.io/badge/python-3.10_%7C_3.11_3.12-blue)
+![Python Versions](https://img.shields.io/badge/python-3.10_%7C_3.11_%7C_3.12-blue)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-![Status](https://img.shields.io/badge/status-alpha-red)
+![Status](https://img.shields.io/badge/status-online-green)<!-- ![Status](https://img.shields.io/badge/status-offline-red) -->
+![Stage](https://img.shields.io/badge/stage-beta-yellow)
 ![License](https://img.shields.io/badge/license-BSD--3-green)
 
 ## A newsletter from space, tailored to you
 
 You love astronomy, astrophysics and space science in general?
 
-You could watch youtube videos talking about it for hours (and you do)?
+You could watch youtube videos talking about it for hours — and you do?
 
 You then complain that it takes too much time to keep up with this field?
 
-Look no more! Intergalactic news is a free newsletter that will summarize all of this for you, and deliver it weekly directly in your mailbox. Its language will be adapted depending on your science background and knowledge (which you indicate when you subscribe).
+Look no more! Intergalactic News is a free newsletter that will summarize all of this for you, and deliver it weekly directly in your mailbox. Its language will be adapted depending on your science background and knowledge (which you indicate at subscription).
 
 You can subscribe to it [here](http://eepurl.com/iCIUtc).
 You can also easily unsubscibe if you don't want it anymore.
+
+## Frequency
+
+Currently, the newsletter is sent every Wednesday around noon.
 
 ## Currently Tracked Youtube channels
 
@@ -48,9 +53,10 @@ If you'd like to see content from other channels, please tell us as well.
     - [x] User groups
     - [x] Online subscription
     - [ ] Different update frequencies (e.g. 2/week or 1/month)
-- [ ] Deploy
-- [ ] Showcase an example on this repo
-- [ ] Improve prompts
+- [x] Deploy
+- [ ] Showcase newsletter example
+- [ ] Publishing history on public bucket
+- [ ] IaC with Terraform
 
 ## Disclaimer
 
