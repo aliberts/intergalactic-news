@@ -1,4 +1,4 @@
-name: Connect to AWS role, build and push to ECR
+name: Deploy code to AWS lambda
 
 on:
   push:
@@ -17,15 +17,15 @@ jobs:
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v4
+      - name: Load cached $HOME/.local
+        uses: actions/cache@v3
+        with:
+          path: ~/.local
+          key: dotlocal-${{ runner.os }}-${{ hashFiles('.github/workflows/deploy.yml') }}
       - name: Install poetry & poetry export
         run: |
           pipx install poetry
           pipx inject poetry poetry-plugin-export
-      - name: Cache poetry
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          cache: 'poetry'
       - name: Export requirements.txt
         run: poetry export -f requirements.txt --output requirements.txt --without-hashes
       - name: Configure aws credentials
@@ -37,13 +37,13 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Build, tag and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build --platform linux/amd64 -t $ECR_REGISTRY/inews:latest .
           docker push $ECR_REGISTRY/inews:latest
-      - name: Updating lambda
+      - name: Update lambda code
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
