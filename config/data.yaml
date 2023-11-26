@@ -4,5 +4,5 @@ number_of_topics: 3  # number of words/topics for describing a video
 recent_videos_days_old: 7  # max number of days old for videos to be fetched
 newsletter_stories_days_old: 7 # max number of days old for a story to appear in an issue
 send_weekday: 3  # send issues on wednesdays
-first_issue_date: "2023-11-01"
+first_issue_date: "2023-11-29"
 timezone: Europe/Paris
