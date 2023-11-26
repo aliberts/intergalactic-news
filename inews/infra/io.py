@@ -13,8 +13,6 @@ from inews.infra.types import ChannelID, VideoInfoP
 load_dotenv()
 
 session_token = os.environ["AWS_SESSION_TOKEN"] if "AWS_SESSION_TOKEN" in os.environ else None
-DATA_PATH = Path("/tmp") if "AWS_LAMBDA_FUNCTION_NAME" in os.environ else Path("data")
-
 s3 = boto3.resource(
     "s3",
     region_name=os.environ["AWS_REGION"],
@@ -22,6 +20,7 @@ s3 = boto3.resource(
     aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
     aws_session_token=session_token,
 )
+
 
 # S3
 BUCKET = "intergalactic-news"
@@ -37,6 +36,7 @@ DATA_CONFIG_FILE = Path("config/data.yaml")
 MAILING_CONFIG_FILE = Path("config/mailing.yaml")
 
 # Data
+DATA_PATH = Path("/tmp") if "AWS_LAMBDA_FUNCTION_NAME" in os.environ else Path("data")
 CHANNELS_LOCAL_FILE = DATA_PATH / Path("channels_state.json")
 TRANSCRIPTS_LOCAL_PATH = DATA_PATH / Path("transcripts/")
 SUMMARIES_LOCAL_PATH = DATA_PATH / Path("summaries/")

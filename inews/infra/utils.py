@@ -2,4 +2,10 @@ from inews.infra.types import RunStatus
 
 
 def validate_event(event: dict) -> RunStatus:
-    return RunStatus.TEST if event["Status"] == "test" else RunStatus.PROD
+    print(event)
+    if event["Status"] == "test":
+        return RunStatus.TEST
+    elif event["Status"] == "prod":
+        return RunStatus.PROD
+    else:
+        raise ValueError
