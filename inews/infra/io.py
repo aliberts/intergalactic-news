@@ -28,6 +28,7 @@ CHANNELS_S3_FILE = "channels_state.json"
 TRANSCRIPTS_S3_PATH = "transcripts/"
 SUMMARIES_S3_PATH = "summaries/"
 STORIES_S3_PATH = "stories/"
+NEWSLETTERS_S3_PATH = "newsletters/"
 ISSUES_S3_PATH = "issues/"
 
 # Config
@@ -119,6 +120,14 @@ def push_data_to_bucket() -> None:
     for story_file_path in STORIES_LOCAL_PATH.rglob("*.json"):
         s3_file_path = STORIES_S3_PATH + story_file_path.name
         bucket.upload_file(story_file_path, s3_file_path)
+
+
+def push_newsletters_to_bucket() -> None:
+    bucket = s3.Bucket(BUCKET)
+
+    for newsletter_file_path in NEWSLETTERS_LOCAL_PATH.rglob("*.json"):
+        s3_file_path = NEWSLETTERS_S3_PATH + newsletter_file_path.name
+        bucket.upload_file(newsletter_file_path, s3_file_path)
 
 
 def pull_issues_from_bucket() -> None:
