@@ -20,7 +20,7 @@ You then complain that it takes too much time to keep up with this field?
 Look no more! Intergalactic News is a free newsletter that will summarize all of this for you, and deliver it weekly directly in your mailbox. Its language will be adapted depending on your science background and knowledge (which you indicate at subscription).
 
 You can subscribe to it [here](http://eepurl.com/iCIUtc).
-You can also easily unsubscibe if you don't want it anymore.
+You can also easily unsubscribe if you don't want it anymore.
 
 ## Frequency
 
