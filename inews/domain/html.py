@@ -25,11 +25,11 @@ def build_story_block(group_id: UserGroup, story: StoryP, aligned: str = "left")
     story_block += user_story_block.replace(
         "[INEWS:USER_STORY]", story.user_stories[group_id].user_story
     )
-    story_block += build_credits_block(story)
+    story_block += build_content_credits_block(story)
     return story_block
 
 
-def build_credits_block(story: StoryP):
+def build_content_credits_block(story: StoryP):
     user_story_block = io.read_html_template("user_story_block")
     story_credit = f"Credits: {story.channel_info.name}"
     return user_story_block.replace("[INEWS:USER_STORY]", story_credit)
@@ -47,6 +47,10 @@ def build_large_divider_block():
     return io.read_html_template("large_divider_block")
 
 
+def build_credits_block():
+    return io.read_html_template("credits_block")
+
+
 def create_newsletter(newsletter: NewsletterP):
     content = ""
     content += build_summary_block(newsletter.info.summary, newsletter.read_time)
@@ -59,6 +63,7 @@ def create_newsletter(newsletter: NewsletterP):
             content += build_divider_block()
 
     content += build_large_divider_block()
+    content += build_credits_block()
 
     newsletter_template = io.read_html_template("newsletter")
     newsletter = newsletter_template.replace("[INEWS:CONTENT_PLACEHOLDER]", content)
