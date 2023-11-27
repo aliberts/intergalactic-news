@@ -1,0 +1,8 @@
+{
+    "debug": true,
+    "dummy_llm_requests": false,
+    "send": false,
+    "send_test": true,
+    "pull_from_bucket": true,
+    "push_to_bucket": false
+}

@@ -1,18 +1,23 @@
-FROM public.ecr.aws/lambda/python:3.10
+###############################################
+# Builder Image
+###############################################
+FROM public.ecr.aws/lambda/python:3.10 as builder-base
 
 # Copy requirements.txt
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Install the specified packages
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt --target ${LAMBDA_TASK_ROOT}
+
+###############################################
+# Production Image
+###############################################
+FROM builder-base as production
 
 # Copy function code
 COPY config/ ${LAMBDA_TASK_ROOT}/config
 COPY inews/ ${LAMBDA_TASK_ROOT}/inews
 COPY lambda_function.py ${LAMBDA_TASK_ROOT}
 
-# Use for local run
-# COPY .env ${LAMBDA_TASK_ROOT}
-
-# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+# Set CMD to handler
 CMD [ "lambda_function.handler" ]

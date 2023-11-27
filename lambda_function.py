@@ -1,24 +1,35 @@
+import argparse
 from pprint import pformat
 
 from inews.domain import pipeline
+from inews.infra import io
 from inews.infra.types import RunEvent
 
 
 def handler(event, context=None):
     run = RunEvent.model_validate(event)
-    print(f"Run Status:\n{pformat(run)}")
+    print(f"Run Event:\n{pformat(run)}")
 
     pipeline.run_data(run)
     pipeline.run_mailing(run)
 
 
 if __name__ == "__main__":
-    event = {
-        "debug": True,
-        "dummy_llm_requests": True,
-        "send": False,
-        "send_test": False,
-        "pull_from_bucket": True,
-        "push_to_bucket": False,
-    }
+    parser = argparse.ArgumentParser(
+        prog="Lambda handler",
+    )
+    parser.add_argument(
+        "event_filename",
+        metavar="EVENT_FILENAME",
+        help="Enter the filename to the event json used for the run.",
+    )
+    parser.add_argument(
+        "-p", "--push", action="store_true", help="upload outputs to bucket (override event)"
+    )
+    args = parser.parse_args()
+
+    event = io.load_from_json_file(args.event_filename)
+    if args.push:
+        event["push_to_bucket"] = True
+
     handler(event)
