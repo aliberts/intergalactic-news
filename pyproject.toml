@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "intergalactic-news"
-version = "0.1.2"
+version = "0.1.3"
 description = "Get the latest news from intergalactic space 🪐"
 license = "BSD-3-Clause"
 authors = ["Simon Alibert <alibert.sim@gmail.com>"]
