@@ -11,36 +11,91 @@ permissions:
 jobs:
   Deploy:
     runs-on: ubuntu-latest
+    env:
+      POETRY_VERSION: 1.7.1
+      POETRY_EXPORT_VERSION: 1.6.0
+      POETRY_HOME: ~/.local/bin/
+      POETRY: ~/.local/bin/bin/poetry
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v4
-      - name: Load cached $HOME/.local
+
+
+      ###############################################
+      # Export requirements (cached)
+      ###############################################
+      - name: Cache requirements
+        id: req-cache
         uses: actions/cache@v3
         with:
-          path: ~/.local
-          key: dotlocal-${{ runner.os }}-${{ hashFiles('.github/workflows/deploy.yml') }}
-      - name: Install poetry & poetry export
+          path: ${{ github.workspace }}/requirements.txt
+          key: requirements-${{ hashFiles('poetry.lock') }}
+
+      - name: Cache Poetry installation
+        id: poetry-cache
+        if: steps.req-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/bin/
+          key: poetry-${{ env.POETRY_VERSION }}-${{ env.POETRY_EXPORT_VERSION }}
+
+      - name: Install Poetry
+        if: |
+          steps.req-cache.outputs.cache-hit != 'true' &&
+          steps.poetry-cache.outputs.cache-hit != 'true'
         run: |
-          pipx install poetry
-          pipx inject poetry poetry-plugin-export
+          python3 -m venv $POETRY_HOME
+          $POETRY_HOME/bin/pip install poetry==$POETRY_VERSION
+          $POETRY self add poetry-plugin-export==$POETRY_EXPORT_VERSION
+
       - name: Export requirements.txt
-        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+        if: steps.req-cache.outputs.cache-hit != 'true'
+        run: |
+          $POETRY config warnings.export false
+          $POETRY export -f requirements.txt --output requirements.txt --without-hashes
+
+
+      ###############################################
+      # AWS authentications
+      ###############################################
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.IAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: "eu-west-3"
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build, tag and push image to Amazon ECR
+
+
+      ###############################################
+      # Build, push & deploy
+      ###############################################
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker build --platform linux/amd64 -t $ECR_REGISTRY/inews:latest .
-          docker push $ECR_REGISTRY/inews:latest
-      - name: Update lambda code
+        with:
+          images: ${{ env.ECR_REGISTRY }}/inews
+          tags: latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha
+
+      - name: Update Lambda code
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
