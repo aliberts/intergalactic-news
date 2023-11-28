@@ -83,13 +83,14 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         with:
           images: ${{ env.ECR_REGISTRY }}/inews
-          tags: latest
+          tags: type=semver,pattern={{raw}}
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64
           cache-from: type=gha
@@ -101,4 +102,4 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name inews \
-            --image-uri $ECR_REGISTRY/inews:latest > /dev/null
+            --image-uri $ECR_REGISTRY/inews:${{github.ref_name}} > /dev/null
