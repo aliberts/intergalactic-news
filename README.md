@@ -5,8 +5,8 @@
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 ![Python Versions](https://img.shields.io/badge/python-3.10_%7C_3.11_%7C_3.12-blue)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-![Status](https://img.shields.io/badge/status-online-green)<!-- ![Status](https://img.shields.io/badge/status-offline-red) -->
-![Stage](https://img.shields.io/badge/stage-beta-yellow)
+![Service](https://img.shields.io/badge/service-online-green)<!-- ![Service](https://img.shields.io/badge/service-offline-red) -->
+![Status](https://img.shields.io/badge/status-beta-yellow)
 ![License](https://img.shields.io/badge/license-BSD--3-green)
 
 ## A newsletter from space, tailored to you
@@ -17,7 +17,7 @@ You could watch youtube videos talking about it for hours — and you do?
 
 You then complain that it takes too much time to keep up with this field?
 
-Look no more! Intergalactic News is a free newsletter that will summarize all of this for you, and deliver it weekly directly in your mailbox. Its language will be adapted depending on your science background and knowledge (which you indicate at subscription).
+Look no more! Intergalactic News is a free newsletter that will summarize all of this for you, and deliver it weekly directly into your mailbox. Its language will be adapted depending on your science background and knowledge (which you indicate at subscription).
 
 You can subscribe to it [here](http://eepurl.com/iCIUtc).
 You can also easily unsubscribe if you don't want it anymore.
