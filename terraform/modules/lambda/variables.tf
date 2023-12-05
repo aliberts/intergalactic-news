@@ -1,0 +1,11 @@
+variable "region" {}
+variable "account_id" {}
+variable "project_name" {}
+variable "stage" {}
+variable "lambda_log_group_arn" {}
+variable "ecr_repo_url" {}
+variable "s3_bucket_arn" {}
+variable "google_api_key" {}
+variable "mailchimp_api_key" {}
+variable "openai_api_key" {}
+variable "tags" {}
