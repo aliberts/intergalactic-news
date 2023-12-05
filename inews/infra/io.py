@@ -23,7 +23,6 @@ s3 = boto3.resource(
 
 
 # S3
-BUCKET = "intergalactic-news"
 CHANNELS_S3_FILE = "channels_state.json"
 TRANSCRIPTS_S3_PATH = "transcripts/"
 SUMMARIES_S3_PATH = "summaries/"
@@ -49,8 +48,8 @@ HTML_TEMPLATE_PATH = Path("inews/templates/")
 HTML_BUILD_PATH = DATA_PATH / Path("html/")
 
 
-def clear_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def clear_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
     to_delete = []
     for object in bucket.objects.all():
         if object.key.endswith("json"):
@@ -82,8 +81,8 @@ def download_file_from_bucket(bucket, s3_path: str, local_path: Path) -> None:
         return
 
 
-def pull_data_from_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def pull_data_from_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
     download_file_from_bucket(bucket, CHANNELS_S3_FILE, CHANNELS_LOCAL_FILE)
 
     for object in bucket.objects.filter(Prefix=TRANSCRIPTS_S3_PATH):
@@ -105,8 +104,8 @@ def pull_data_from_bucket() -> None:
             download_file_from_bucket(bucket, object.key, local_file_path)
 
 
-def push_data_to_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def push_data_to_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
     bucket.upload_file(CHANNELS_LOCAL_FILE, CHANNELS_S3_FILE)
 
     for transcript_file_path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
@@ -122,16 +121,16 @@ def push_data_to_bucket() -> None:
         bucket.upload_file(story_file_path, s3_file_path)
 
 
-def push_newsletters_to_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def push_newsletters_to_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
 
     for newsletter_file_path in NEWSLETTERS_LOCAL_PATH.rglob("*.json"):
         s3_file_path = NEWSLETTERS_S3_PATH + newsletter_file_path.name
         bucket.upload_file(newsletter_file_path, s3_file_path)
 
 
-def pull_issues_from_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def pull_issues_from_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
 
     for object in bucket.objects.filter(Prefix=ISSUES_S3_PATH):
         if object.key.endswith("html"):
@@ -140,8 +139,8 @@ def pull_issues_from_bucket() -> None:
             download_file_from_bucket(bucket, object.key, local_file_path)
 
 
-def push_issues_to_bucket() -> None:
-    bucket = s3.Bucket(BUCKET)
+def push_issues_to_bucket(bucket_name: str) -> None:
+    bucket = s3.Bucket(bucket_name)
 
     for issue_file_path in HTML_BUILD_PATH.rglob("*.html"):
         s3_file_path = ISSUES_S3_PATH + issue_file_path.name

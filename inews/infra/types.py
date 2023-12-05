@@ -16,6 +16,7 @@ BaseModel.__repr__ = pprint_repr
 
 
 class RunEvent(BaseModel):
+    stage: str
     debug: bool
     dummy_llm_requests: bool
     send: bool

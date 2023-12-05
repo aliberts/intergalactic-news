@@ -23,8 +23,9 @@ data_config = io.get_data_config()
 def run_data(run: RunEvent):
     io.make_data_dirs()
 
+    bucket_name = f"inews-{run.stage}"
     if run.pull_from_bucket:
-        io.pull_data_from_bucket()
+        io.pull_data_from_bucket(bucket_name)
 
     channels = build_channels(use_local_files=True)
     channels.update_recent_videos()
@@ -62,7 +63,7 @@ def run_data(run: RunEvent):
         story.save()
 
     if run.push_to_bucket:
-        io.push_data_to_bucket()
+        io.push_data_to_bucket(bucket_name)
 
 
 def run_mailing(run: RunEvent):
@@ -93,7 +94,8 @@ def run_mailing(run: RunEvent):
             mc_campaign.send_test()
 
     if run.push_to_bucket:
-        io.push_issues_to_bucket()
+        bucket_name = f"inews-{run.stage}"
+        io.push_issues_to_bucket(bucket_name)
 
 
 def build_newsletters(today: pendulum.DateTime, run: RunEvent) -> list[Newsletter]:
@@ -107,7 +109,8 @@ def build_newsletters(today: pendulum.DateTime, run: RunEvent) -> list[Newslette
     newsletter_info.save()
 
     if run.push_to_bucket:
-        io.push_newsletters_to_bucket()
+        bucket_name = f"inews-{run.stage}"
+        io.push_newsletters_to_bucket(bucket_name)
 
     print("Building all newsletter versions")
     newsletters = []
