@@ -1,4 +1,5 @@
 {
+    "stage": "prod",
     "debug": false,
     "dummy_llm_requests": false,
     "send": true,
