@@ -21,7 +21,6 @@ openai = "^0.28.1"
 pendulum = "^2.1.2"
 boto3 = "^1.28.71"
 mailchimp-marketing = "^3.0.80"
-tqdm = "^4.66.1"
 tenacity = "^8.2.3"
 readtime = "^3.0.0"
 
