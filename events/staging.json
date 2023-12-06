@@ -1,6 +1,6 @@
 {
     "stage": "dev",
-    "debug": false,
+    "debug": true,
     "dummy_llm_requests": false,
     "send": false,
     "send_test": true,
