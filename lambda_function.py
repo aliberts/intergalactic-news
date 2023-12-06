@@ -1,17 +1,17 @@
 import argparse
 from pprint import pformat
 
-from inews.domain import pipeline
 from inews.infra import io
 from inews.infra.types import RunEvent
+from inews.pipeline import data, mailing
 
 
 def handler(event, context=None):
-    run = RunEvent.model_validate(event)
-    print(f"Run Event:\n{pformat(run)}")
+    valid_event = RunEvent.model_validate(event)
+    print(f"Run Event:\n{pformat(valid_event)}")
 
-    pipeline.run_data(run)
-    pipeline.run_mailing(run)
+    data.run(valid_event)
+    mailing.run(valid_event)
 
 
 if __name__ == "__main__":

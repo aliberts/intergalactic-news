@@ -1,5 +1,4 @@
 from tenacity import retry, stop_after_attempt, wait_random_exponential
-from tqdm import tqdm
 
 from inews.domain import preprocessing, prompts
 from inews.infra import apis, io
@@ -83,7 +82,7 @@ def get_model_response(prompt: str) -> str:
         {"role": "user", "content": prompt},
     ]
     messages_tokens_count = preprocessing.count_tokens_from_messages(messages)
-    tqdm.write(f"tokens: {messages_tokens_count}, using {MODEL}")
+    print(f"Using {MODEL}, tokens: {messages_tokens_count}")
 
     completion = chat_completion(
         model=MODEL,

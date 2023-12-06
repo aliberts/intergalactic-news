@@ -8,7 +8,7 @@ import yaml
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-from inews.infra.types import ChannelID, VideoInfoP
+from inews.infra.types import ChannelID, VideoID, VideoInfoP
 
 load_dotenv()
 
@@ -24,8 +24,7 @@ s3 = boto3.resource(
 
 # S3
 CHANNELS_S3_FILE = "channels_state.json"
-TRANSCRIPTS_S3_PATH = "transcripts/"
-SUMMARIES_S3_PATH = "summaries/"
+VIDEOS_S3_FILE = "videos_state.json"
 STORIES_S3_PATH = "stories/"
 NEWSLETTERS_S3_PATH = "newsletters/"
 ISSUES_S3_PATH = "issues/"
@@ -38,6 +37,7 @@ MAILING_CONFIG_FILE = Path("config/mailing.yaml")
 # Data
 DATA_PATH = Path("/tmp") if "AWS_LAMBDA_FUNCTION_NAME" in os.environ else Path("data")
 CHANNELS_LOCAL_FILE = DATA_PATH / Path("channels_state.json")
+VIDEOS_LOCAL_FILE = DATA_PATH / Path("videos_state.json")
 TRANSCRIPTS_LOCAL_PATH = DATA_PATH / Path("transcripts/")
 SUMMARIES_LOCAL_PATH = DATA_PATH / Path("summaries/")
 STORIES_LOCAL_PATH = DATA_PATH / Path("stories/")
@@ -77,56 +77,50 @@ def make_data_dirs():
 def download_file_from_bucket(bucket, s3_path: str, local_path: Path) -> None:
     try:
         bucket.download_file(s3_path, local_path)
+        return 1
     except ClientError:
-        return
+        return 0
 
 
 def pull_data_from_bucket(bucket_name: str) -> None:
+    files_count = 0
     bucket = s3.Bucket(bucket_name)
-    download_file_from_bucket(bucket, CHANNELS_S3_FILE, CHANNELS_LOCAL_FILE)
-
-    for object in bucket.objects.filter(Prefix=TRANSCRIPTS_S3_PATH):
-        if object.key.endswith("json"):
-            local_file_name = Path(object.key).name
-            local_file_path = TRANSCRIPTS_LOCAL_PATH / local_file_name
-            download_file_from_bucket(bucket, object.key, local_file_path)
-
-    for object in bucket.objects.filter(Prefix=SUMMARIES_S3_PATH):
-        if object.key.endswith("json"):
-            local_file_name = Path(object.key).name
-            local_file_path = SUMMARIES_LOCAL_PATH / local_file_name
-            download_file_from_bucket(bucket, object.key, local_file_path)
+    files_count += download_file_from_bucket(bucket, CHANNELS_S3_FILE, CHANNELS_LOCAL_FILE)
+    files_count += download_file_from_bucket(bucket, VIDEOS_S3_FILE, VIDEOS_LOCAL_FILE)
 
     for object in bucket.objects.filter(Prefix=STORIES_S3_PATH):
         if object.key.endswith("json"):
             local_file_name = Path(object.key).name
             local_file_path = STORIES_LOCAL_PATH / local_file_name
-            download_file_from_bucket(bucket, object.key, local_file_path)
+            files_count += download_file_from_bucket(bucket, object.key, local_file_path)
+
+    print(f"Downloaded {files_count} data files from {bucket_name} bucket")
 
 
 def push_data_to_bucket(bucket_name: str) -> None:
     bucket = s3.Bucket(bucket_name)
     bucket.upload_file(CHANNELS_LOCAL_FILE, CHANNELS_S3_FILE)
+    bucket.upload_file(VIDEOS_LOCAL_FILE, VIDEOS_S3_FILE)
 
-    for transcript_file_path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
-        s3_file_path = TRANSCRIPTS_S3_PATH + transcript_file_path.name
-        bucket.upload_file(transcript_file_path, s3_file_path)
-
-    for summary_file_path in SUMMARIES_LOCAL_PATH.rglob("*.json"):
-        s3_file_path = SUMMARIES_S3_PATH + summary_file_path.name
-        bucket.upload_file(summary_file_path, s3_file_path)
-
+    files_count = 2
     for story_file_path in STORIES_LOCAL_PATH.rglob("*.json"):
         s3_file_path = STORIES_S3_PATH + story_file_path.name
         bucket.upload_file(story_file_path, s3_file_path)
+        files_count += 1
+
+    print(f"Uploaded {files_count} data files to {bucket_name} bucket")
 
 
 def push_newsletters_to_bucket(bucket_name: str) -> None:
     bucket = s3.Bucket(bucket_name)
+    files_count = 0
 
     for newsletter_file_path in NEWSLETTERS_LOCAL_PATH.rglob("*.json"):
         s3_file_path = NEWSLETTERS_S3_PATH + newsletter_file_path.name
         bucket.upload_file(newsletter_file_path, s3_file_path)
+        files_count += 1
+
+    print(f"Uploaded {files_count} newsletter files to {bucket_name} bucket")
 
 
 def pull_issues_from_bucket(bucket_name: str) -> None:
@@ -148,25 +142,33 @@ def push_issues_to_bucket(bucket_name: str) -> None:
 
 
 def get_data_config() -> dict:
-    with open(DATA_CONFIG_FILE) as file:
+    with open(DATA_CONFIG_FILE, encoding="utf-8") as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 
 
 def get_mailing_config() -> dict:
-    with open(MAILING_CONFIG_FILE) as file:
+    with open(MAILING_CONFIG_FILE, encoding="utf-8") as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 
 
 def get_config_channel_ids() -> list[ChannelID]:
-    with open(CHANNELS_ID_FILE) as file:
+    with open(CHANNELS_ID_FILE, encoding="utf-8") as file:
         channels_id = yaml.safe_load(file)
     return channels_id
 
 
 def get_file_name(video_info: VideoInfoP) -> Path:
     return Path(f"{video_info.date.date()}.{video_info.id}.json")
+
+
+def video_id_local_file(video_id: VideoID) -> Path | None:
+    local_path = None
+    for path in TRANSCRIPTS_LOCAL_PATH.rglob("*.json"):
+        if video_id in path.name:
+            local_path = path
+    return local_path
 
 
 def video_in_local_files(video_info: VideoInfoP) -> bool:
@@ -185,22 +187,22 @@ def story_in_local_files(video_info: VideoInfoP) -> bool:
 
 
 def save_to_json_file(data: Any, file_path: Path) -> None:
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=4)
 
 
 def load_from_json_file(file_path: Path) -> Any:
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         return json.load(file)
 
 
-def read_html_template(template_name: str) -> str:
+def load_html_template(template_name: str) -> str:
     file_path = HTML_TEMPLATE_PATH / f"{template_name}.html"
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         html = file.read()
     return html
 
 
 def save_to_html_file(html: str, file_path: Path) -> None:
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         html = file.write(html)

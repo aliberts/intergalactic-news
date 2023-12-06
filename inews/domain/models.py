@@ -4,7 +4,6 @@ from pathlib import Path
 import pendulum
 import readtime
 from pydantic import BaseModel, Field, computed_field
-from tqdm import tqdm
 from youtube_transcript_api._transcripts import Transcript
 
 from inews.domain import html, llm, mailing, preprocessing, youtube
@@ -12,7 +11,6 @@ from inews.infra import io
 from inews.infra.types import (
     ChannelID,
     PendulumDateTime,
-    RootModelList,
     RunEvent,
     UserGroup,
     VideoID,
@@ -27,16 +25,18 @@ BaseModel.__repr__ = pprint_repr
 
 class VideoInfo(BaseModel):
     id: VideoID
+    channel_id: ChannelID
     title: str
     date: PendulumDateTime
     duration: str
     thumbnail_url: str
+    use: bool = True
 
     @cached_property
     def is_not_short(self) -> bool:
         return pendulum.parse(self.duration).minutes >= data_config["min_video_duration"]
 
-    @cached_property
+    @property
     def is_recent(self) -> bool:
         return (pendulum.now() - self.date).days < data_config["recent_videos_days_old"]
 
@@ -49,57 +49,6 @@ class ChannelInfo(BaseModel):
     id: ChannelID
     name: str
     uploads_playlist_id: str
-
-
-class Channel(BaseModel):
-    info: ChannelInfo
-    recent_videos: list[VideoInfo] = Field(default_factory=list)
-
-    def update_recent_videos(self) -> None:
-        videos_id = youtube.get_channel_recent_videos_id(self.info.uploads_playlist_id)
-        video_infos = youtube.get_videos_infos(videos_id)
-
-        videos = []
-        for item in video_infos:
-            videos.append(VideoInfo(**item))
-
-        videos = [video for video in videos if video.is_valid]
-        self.recent_videos = videos
-
-
-class Channels(RootModelList):
-    root: list[Channel] = Field(default_factory=list)
-
-    @classmethod
-    def init_from_file(cls, file_path: Path):
-        json_data = io.load_from_json_file(file_path)
-        return cls.model_validate(json_data)
-
-    @classmethod
-    def init_from_api_with_ids(cls, channels_id: list[str]):
-        channels = []
-        channel_infos = youtube.get_channels_info(channels_id)
-        for channel_info in channel_infos:
-            info = ChannelInfo.model_validate(channel_info)
-            channels.append(Channel(info=info))
-        return cls.model_validate(channels)
-
-    # Adding new channels from config if there are any
-    def get_new_channels(self, channel_ids: list[ChannelID]):
-        current_channel_ids = [channel.info.id for channel in self.root]
-        new_channel_ids = [id for id in channel_ids if id not in current_channel_ids]
-        new_channel_infos = youtube.get_channels_info(new_channel_ids)
-        for channel_info in new_channel_infos:
-            info = ChannelInfo.model_validate(channel_info)
-            self.root.append(Channel(info=info))
-
-    def update_recent_videos(self) -> None:
-        tqdm.write("Updating channels recent videos")
-        for channel in tqdm(self.root):
-            channel.update_recent_videos()
-
-    def save(self) -> None:
-        io.save_to_json_file(self.model_dump(mode="json"), io.CHANNELS_LOCAL_FILE)
 
 
 class ProcessedTranscript(BaseModel):
@@ -134,10 +83,18 @@ class Video(BaseModel):
             return
 
         available_transcript = youtube.get_available_transcript(self.info.id)
-        if available_transcript is None:
-            self.transcript = None
-        else:
+        if available_transcript is not None:
             self.transcript = ProcessedTranscript.init_from_transcript(available_transcript)
+
+    @cached_property
+    def valid_transcript(self) -> bool:
+        if self.transcript is None:
+            return False
+        else:
+            return (
+                self.transcript.tokens_count >= data_config["tokens_min"]
+                and self.transcript.tokens_count <= data_config["tokens_max"]
+            )
 
     def save(self) -> None:
         file_path = io.TRANSCRIPTS_LOCAL_PATH / io.get_file_name(self.info)

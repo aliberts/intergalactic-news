@@ -100,10 +100,12 @@ UserGroup = Literal[0, 1, 2]
 
 class VideoInfoP(Protocol):
     id: VideoID
+    channel_id: ChannelID
     title: str
     date: pendulum.DateTime
     duration: str
     thumbnail_url: str
+    use: bool
 
 
 class ChannelInfoP(Protocol):

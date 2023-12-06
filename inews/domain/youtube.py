@@ -8,6 +8,11 @@ youtube_api = apis.get_youtube()
 yt_transcript_api = apis.get_yt_transcript()
 
 
+def chunks(full_list: list, size: int = 50):
+    for i in range(0, len(full_list), size):
+        yield full_list[i : i + size]
+
+
 def get_channels_info(channels_id: list[ChannelID]) -> list[dict]:
     if len(channels_id) == 0:
         return []
@@ -28,7 +33,7 @@ def get_channels_info(channels_id: list[ChannelID]) -> list[dict]:
     return channels_infos
 
 
-def get_channel_recent_videos_id(uploads_playlist_id: str, max_results: int = 50) -> list[VideoID]:
+def get_channel_recent_videos_ids(uploads_playlist_id: str, max_results: int = 50) -> list[VideoID]:
     request = youtube_api.playlistItems().list(
         part="snippet", maxResults=max_results, playlistId=uploads_playlist_id
     )
@@ -37,21 +42,26 @@ def get_channel_recent_videos_id(uploads_playlist_id: str, max_results: int = 50
     return videos_id
 
 
-def get_videos_infos(videos_id: list[VideoID]) -> list[dict]:
-    request = youtube_api.videos().list(part="snippet,contentDetails", id=videos_id)
-    response = request.execute()
-    video_infos = []
-    for item in response["items"]:
-        video_infos.append(
+def get_videos_info(videos_ids: list[VideoID]) -> list[dict]:
+    response_items = []
+    for videos_ids_chunk in chunks(videos_ids):
+        request = youtube_api.videos().list(part="snippet,contentDetails", id=videos_ids_chunk)
+        chunk_response = request.execute()
+        response_items += chunk_response["items"]
+
+    videos_info_list = []
+    for item in response_items:
+        videos_info_list.append(
             {
                 "id": item["id"],
+                "channel_id": item["snippet"]["channelId"],
                 "title": unidecode(item["snippet"]["title"]),
                 "date": item["snippet"]["publishedAt"],
                 "duration": item["contentDetails"]["duration"],
                 "thumbnail_url": item["snippet"]["thumbnails"]["medium"]["url"],
             }
         )
-    return video_infos
+    return videos_info_list
 
 
 def get_available_transcript(video_id: VideoID) -> Transcript | None:
