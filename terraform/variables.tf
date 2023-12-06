@@ -7,7 +7,7 @@ variable "github_repo_owner" {
 variable "github_repo_name" {
   description = "Github Repo Name"
   type        = string
-  default     = "infra-tests"
+  default     = "intergalactic-news"
 }
 
 variable "region" {
