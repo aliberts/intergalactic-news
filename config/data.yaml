@@ -6,3 +6,5 @@ newsletter_stories_days_old: 7 # max number of days old for a story to appear in
 send_weekday: 3  # send issues on wednesdays
 first_issue_date: "2023-11-29"
 timezone: Europe/Paris
+tokens_min: 400
+tokens_max: 14000
