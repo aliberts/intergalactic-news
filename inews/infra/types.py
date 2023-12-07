@@ -1,3 +1,4 @@
+from enum import Enum
 from pprint import pformat
 from typing import Annotated, Any, Callable, Literal, Protocol
 
@@ -15,8 +16,13 @@ RootModel.__repr__ = pprint_repr
 BaseModel.__repr__ = pprint_repr
 
 
+class Stage(Enum):
+    PROD = "prod"
+    DEV = "dev"
+
+
 class RunEvent(BaseModel):
-    stage: str
+    stage: Stage
     debug: bool
     dummy_llm_requests: bool
     send: bool

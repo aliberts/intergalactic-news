@@ -16,7 +16,7 @@ from inews.infra.types import ChannelID, RunEvent
 def run(event: RunEvent):
     io.make_data_dirs()
 
-    bucket_name = f"inews-{event.stage}"
+    bucket_name = f"inews-{event.stage._value_}"
     if event.pull_from_bucket:
         io.pull_data_from_bucket(bucket_name)
 

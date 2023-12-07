@@ -38,7 +38,7 @@ def run(event: RunEvent):
             mc_campaign.send_test()
 
     if event.push_to_bucket:
-        bucket_name = f"inews-{event.stage}"
+        bucket_name = f"inews-{event.stage._value_}"
         io.push_issues_to_bucket(bucket_name)
 
 
@@ -53,7 +53,7 @@ def build_newsletters(today: pendulum.DateTime, event: RunEvent) -> list[Newslet
     newsletter_info.save()
 
     if event.push_to_bucket:
-        bucket_name = f"inews-{event.stage}"
+        bucket_name = f"inews-{event.stage._value_}"
         io.push_newsletters_to_bucket(bucket_name)
 
     print("Building all newsletter versions")
