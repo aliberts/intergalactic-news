@@ -27,16 +27,16 @@ login-ecr:
 build-ecr:
     docker build --platform linux/amd64 -t inews .
 
-tag-ecr:
-    docker tag inews:latest 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews:latest
+tag-ecr tfenv:
+    docker tag inews:latest 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews-{{tfenv}}:latest
 
-push-ecr:
-    docker push 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews:latest
+push-ecr tfenv:
+    docker push 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews-{{tfenv}}:latest
 
-update-lambda: export-req login-ecr build-ecr tag-ecr push-ecr
+update-lambda tfenv: export-req login-ecr build-ecr (tag-ecr tfenv) (push-ecr tfenv)
     aws lambda update-function-code \
-           --function-name inews \
-           --image-uri 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews:latest
+        --function-name inews-{{tfenv}} \
+        --image-uri 976114805627.dkr.ecr.eu-west-3.amazonaws.com/inews-{{tfenv}}:latest
 
 trigger event:
     curl "http://192.168.63.101:9000/2015-03-31/functions/function/invocations" \
@@ -71,3 +71,9 @@ tf-destroy tfenv:
     cd terraform && \
     terraform workspace select {{tfenv}} && \
     terraform destroy -auto-approve -var-file=environments/{{tfenv}}.tfvars
+
+test val:
+    echo {{val}}
+
+test2 val: (test val)
+    echo {{val}} 2
