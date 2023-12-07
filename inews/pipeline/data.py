@@ -12,8 +12,6 @@ from inews.domain.models import (
 from inews.infra import io
 from inews.infra.types import ChannelID, RunEvent
 
-data_config = io.get_data_config()
-
 
 def run(event: RunEvent):
     io.make_data_dirs()
@@ -207,6 +205,9 @@ def build_summaries_from_videos(videos: list[Video], use_local_files: bool = Tru
 
 
 def select_relevant_summaries(summaries: list[Summary], event: RunEvent) -> list[Summary]:
+    if len(summaries) == 0:
+        return []
+
     selection = llm.get_stories_selection_from_topics(summaries, event)
 
     try:

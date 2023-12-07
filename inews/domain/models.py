@@ -18,6 +18,7 @@ from inews.infra.types import (
 )
 
 data_config = io.get_data_config()
+mailing_config = io.get_mailing_config()
 
 
 BaseModel.__repr__ = pprint_repr
@@ -177,7 +178,7 @@ class Story(BaseModel):
             return
 
         user_stories = []
-        for group_id in data_config["user_groups"]:
+        for group_id, _ in enumerate(mailing_config["mc_group_interest_values"]):
             user_summary = llm.get_user_story(summary, group_id, run)
             user_stories.append(UserStory(user_group=group_id, user_story=user_summary))
         self.user_stories = user_stories
@@ -200,7 +201,7 @@ class NewsletterInfo(BaseModel):
     @cached_property
     def issue_number(self) -> int:
         first_issue_date = pendulum.parse(
-            data_config["first_issue_date"], tz=data_config["timezone"]
+            mailing_config["first_issue_date"], tz=mailing_config["timezone"]
         )
         return (self.date - first_issue_date).in_weeks() + 1
 
@@ -218,7 +219,7 @@ class NewsletterInfo(BaseModel):
     @cached_property
     def read_times(self) -> list[int]:
         read_times = []
-        for group_idx, _ in enumerate(data_config["user_groups"]):
+        for group_idx, _ in enumerate(mailing_config["mc_group_interest_values"]):
             user_group_read_time = 0
             for story in self.stories:
                 text_to_read = story.title + story.short + story.user_stories[group_idx].user_story

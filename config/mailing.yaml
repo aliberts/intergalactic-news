@@ -1,3 +1,6 @@
+send_weekday: 3  # send issues on wednesdays
+first_issue_date: "2023-11-29"
+timezone: Europe/Paris
 mc_list_id: 44b6731e59
 mc_group_interest_id: cc4602cade
 mc_group_interest_values:

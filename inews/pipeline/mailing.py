@@ -6,14 +6,15 @@ from inews.domain import llm
 from inews.domain.models import MCCampaign, Newsletter, NewsletterInfo, Story
 from inews.infra import io
 from inews.infra.types import RunEvent
-from inews.pipeline.data import data_config
+
+mailing_config = io.get_mailing_config()
 
 
 def run(event: RunEvent):
-    timezone = data_config["timezone"]
+    timezone = mailing_config["timezone"]
     today = pendulum.today(tz=timezone)
 
-    if today.day_of_week != data_config["send_weekday"] and not event.debug:
+    if today.day_of_week != mailing_config["send_weekday"] and not event.debug:
         return
 
     newsletters = build_newsletters(today, event)
@@ -57,7 +58,7 @@ def build_newsletters(today: pendulum.DateTime, event: RunEvent) -> list[Newslet
 
     print("Building all newsletter versions")
     newsletters = []
-    for group_id in data_config["user_groups"]:
+    for group_id, _ in enumerate(mailing_config["mc_group_interest_values"]):
         read_time = newsletter_info.read_times[group_id]
         newsletter = Newsletter(info=newsletter_info, group_id=group_id, read_time=read_time)
         newsletter.build_html()
