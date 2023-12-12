@@ -54,9 +54,9 @@ If you'd like to see content from other channels, please tell us as well.
     - [x] Online subscription
     - [ ] Different update frequencies (e.g. 2/week or 1/month)
 - [x] Deploy
+- [x] IaC with Terraform
 - [ ] Showcase newsletter example
 - [ ] Publishing history on public bucket
-- [ ] IaC with Terraform
 
 ## Disclaimer
 
