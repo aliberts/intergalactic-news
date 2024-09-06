@@ -5,7 +5,7 @@
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 ![Python Versions](https://img.shields.io/badge/python-3.10_%7C_3.11_%7C_3.12-blue)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-![Service](https://img.shields.io/badge/service-online-green)<!-- ![Service](https://img.shields.io/badge/service-offline-red) -->
+![Service](https://img.shields.io/badge/service-offline-red)<!-- ![Service](https://img.shields.io/badge/service-online-green) -->
 ![Status](https://img.shields.io/badge/status-beta-yellow)
 ![License](https://img.shields.io/badge/license-BSD--3-green)
 
